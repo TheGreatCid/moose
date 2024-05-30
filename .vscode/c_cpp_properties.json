@@ -4,20 +4,21 @@
             "name": "Apptainer moose-dev",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/opt/libmesh/include/**",
+                "/Users/torrde/miniforge/envs/moose/libmesh/include/**",
                 "/opt/petsc/include/**",
                 "/opt/mpich/include/**",
-                "/opt/wasp/include/**",
+                "/Users/torrde/miniforge/envs/moose/wasp/include/**",
                 "/opt/rh/gcc-toolset-12/root/usr/include/**",
-                "/usr/include/**"
+                "/usr/include/**",
+                "/Users/torrde/miniforge/envs/moose/include/**",
+                "/Users/torrde/miniforge/include/**"
             ],
             "defines": [],
-            "compilerPath": "/opt/rh/gcc-toolset-12/root/usr/bin/gcc",
+            "compilerPath": "/Users/torrde/miniforge/envs/moose/bin/mpicxx",
             "cStandard": "c17",
             "cppStandard": "gnu++17",
             "intelliSenseMode": "linux-gcc-x64"
         }
     ],
     "version": 4
-  }
-
+}
