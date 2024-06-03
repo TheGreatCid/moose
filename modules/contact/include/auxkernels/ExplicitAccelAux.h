@@ -2,6 +2,7 @@
 #pragma once
 
 #include "AuxKernel.h"
+#include "Assembly.h"
 
 class ExplicitAccelAux : public AuxKernel
 {
@@ -17,7 +18,13 @@ protected:
 
   // Density
   Real _rho;
-  const MaterialProperty<RankTwoTensor> & _Fint;
-  const MaterialProperty<RankTwoTensor> & _Fext;
-  const MaterialProperty<RankTwoTensor> & _Fc;
+
+  //Internal Forces
+  const VariableValue & _Fint;
+
+  //External Forces
+  const VariableValue & _Fext;
+
+  //Contact Force
+  const VariableValue & _Fc;
 };
