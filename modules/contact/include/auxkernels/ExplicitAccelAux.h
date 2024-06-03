@@ -26,5 +26,8 @@ protected:
   const VariableValue & _Fext;
 
   //Contact Force
-  const VariableValue & _Fc;
+  const VariableValue & _Pc;
+
+  //Nodal area
+  const VariableValue & _nodal_area;
 };
