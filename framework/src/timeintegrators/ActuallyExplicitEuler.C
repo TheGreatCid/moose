@@ -36,6 +36,18 @@ ActuallyExplicitEuler::validParams()
 ActuallyExplicitEuler::ActuallyExplicitEuler(const InputParameters & parameters)
   : ExplicitTimeIntegrator(parameters), _constant_mass(getParam<bool>("use_constant_mass"))
 {
+  if (_solve_type == LUMPED || _solve_type == LUMPED_CENTRAL_DIFFERENCE)
+    _is_lumped = true;
+  _is_explicit = true;
+  // Setting intial accel to zero
+  if (LUMPED_CENTRAL_DIFFERENCE)
+  {
+    // TESTING----
+    _fe_problem.setUDotOldRequested(true);
+    _fe_problem.setUDotDotRequested(true);
+    _fe_problem.setUDotDotOldRequested(true);
+    //----------
+  }
 }
 
 void
@@ -44,14 +56,26 @@ ActuallyExplicitEuler::computeTimeDerivatives()
   if (!_sys.solutionUDot())
     mooseError("ActuallyExplicitEuler: Time derivative of solution (`u_dot`) is not stored. Please "
                "set uDotRequested() to true in FEProblemBase before requesting `u_dot`.");
-
   NumericVector<Number> & u_dot = *_sys.solutionUDot();
   u_dot = *_solution;
   computeTimeDerivativeHelper(u_dot, _solution_old);
   u_dot.close();
 
   _du_dot_du = 1.0 / _dt;
+  _du_dot_du = 1.0 / _dt;
 }
+
+// // TESTING-----------------
+// void
+// ActuallyExplicitEuler::initialSetup()
+// {
+//   ExplicitTimeIntegrator::initialSetup();
+//   _nl.disassociateVectorFromTag(*_nl.solutionUDot(), _u_dot_factor_tag);
+//   _nl.addVector(_u_dot_factor_tag, true, GHOSTED);
+//   _nl.disassociateVectorFromTag(*_nl.solutionUDotDot(), _u_dotdot_factor_tag);
+//   _nl.addVector(_u_dotdot_factor_tag, true, GHOSTED);
+// }
+// //------------------------
 
 void
 ActuallyExplicitEuler::computeADTimeDerivatives(DualReal & ad_u_dot,
@@ -78,7 +102,9 @@ ActuallyExplicitEuler::solve()
   _explicit_residual.zero();
   _fe_problem.computeResidual(
       *_nonlinear_implicit_system->current_local_solution, _explicit_residual, _nl.number());
-
+  // _fe_problem.computeResidualTag(*_nonlinear_implicit_system->current_local_solution,
+  //                                _explicit_residual,
+  //                                _fe_problem.getVectorTagID("NONTIME"));
   // Move the residual to the RHS
   _explicit_residual *= -1.0;
 

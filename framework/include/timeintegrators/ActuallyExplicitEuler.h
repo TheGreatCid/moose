@@ -23,6 +23,8 @@ public:
   ActuallyExplicitEuler(const InputParameters & parameters);
 
   virtual int order() override { return 1; }
+  //virtual void initialSetup() override;
+
   virtual void computeTimeDerivatives() override;
   void computeADTimeDerivatives(DualReal & ad_u_dot,
                                 const dof_id_type & dof,
@@ -36,7 +38,6 @@ protected:
    */
   template <typename T, typename T2>
   void computeTimeDerivativeHelper(T & u_dot, const T2 & u_old) const;
-
   const bool & _constant_mass;
 };
 
