@@ -188,6 +188,9 @@ InertialForceTempl<false>::computeQpJacobian()
     {
       return _test[_i][_qp] * _density[_qp] * _phi[this->_j][_qp] +
              _eta[_qp] * (1 + _alpha) * _test[_i][_qp] * _density[_qp] * _phi[this->_j][_qp];
+      // return _test[_i][_qp] * _density[_qp] * (*_du_dotdot_du)[_qp] * _phi[this->_j][_qp] +
+      //        _eta[_qp] * (1 + _alpha) * _test[_i][_qp] * _density[_qp] * (*_du_dot_du)[_qp] *
+      //            _phi[this->_j][_qp];
     }
   }
 }

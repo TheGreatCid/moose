@@ -1,7 +1,7 @@
 # One element test to test the central difference time integrator in 3D.
 [GlobalParams]
     displacements = 'disp_x disp_y disp_z'
-    volumetric_locking_correction = true
+    volumetric_locking_correction = false
 []
 
 [Mesh]
@@ -251,7 +251,7 @@
     [DynamicTensorMechanics]
         displacements = 'disp_x disp_y disp_z'
         volumetric_locking_correction = true
-        stiffness_damping_coefficient = 0
+        stiffness_damping_coefficient = 1e-3
         generate_output = 'stress_zz strain_zz'
         save_in = 'Fint_x Fint_y Fint_z'
     []
@@ -331,7 +331,7 @@
         vel_x = 'vel_x'
         vel_y = 'vel_y'
         vel_z = 'vel_z'
-        overwrite_current_solution = false
+        overwrite_current_solution = true
     []
 []
 
@@ -392,14 +392,14 @@
 
     [TimeIntegrator]
         type = CentralDifference
-        solve_type = LUMPED
+        solve_type = LUMPED_CENTRAL_DIFFERENCE
     []
 []
-
 [Outputs]
     interval = 2
     exodus = true
     csv = true
+    file_base = 'Fixed_damping_overwrite'
 []
 
 [Postprocessors]
