@@ -154,11 +154,16 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
 
       // _mass_matrix_diag.print();
       // Calculating the acceleration
-      auto & accel = *_nl.solutionUDotDot();
+      auto & accel = *_sys.solutionUDotDot();
       accel.pointwise_mult(_mass_matrix_diag, _explicit_residual);
 
+      // Copy into _sys
+      // auto & accel_sys = *_sys.solutionUDotDot();
+      // accel_sys.zero();
+      // accel.add(accel);
+
       // Initializing the velocity
-      auto & vel = *_nl.solutionUDot();
+      auto & vel = *_sys.solutionUDot();
       vel.zero();
 
       auto accel_scaled = accel.clone();
@@ -167,11 +172,20 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
       accel_scaled->scale((_dt));
 
       // Adding old vel to new vel
-      auto old_vel = _nl.solutionUDotOld();
+      auto old_vel = _sys.solutionUDotOld();
       vel += *old_vel;
 
       // Adding acceleration to vel
       vel += *accel_scaled;
+
+      // Copy into sys
+      //   auto & vel_sys = *_sys.solutionUDot();
+      // vel_sys.zero();
+      // vel_sys.add(vel);
+      // accel.print();
+      // vel.print();
+      // vel_sys.print();
+
       // Scaling velocity to time step
       auto vel_scaled = vel.clone();
 
@@ -185,6 +199,9 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
 
       // Linear iterations remain zero
       _n_linear_iterations = 0;
+
+      vel.close();
+      accel.close();
 
       break;
     }

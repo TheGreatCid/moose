@@ -34,7 +34,9 @@ ActuallyExplicitEuler::validParams()
 }
 
 ActuallyExplicitEuler::ActuallyExplicitEuler(const InputParameters & parameters)
-  : ExplicitTimeIntegrator(parameters), _constant_mass(getParam<bool>("use_constant_mass"))
+  : ExplicitTimeIntegrator(parameters),
+    _constant_mass(getParam<bool>("use_constant_mass")),
+    _du_dotdot_du(_sys.duDotDotDu())
 {
   if (_solve_type == LUMPED || _solve_type == LUMPED_CENTRAL_DIFFERENCE)
     _is_lumped = true;
@@ -50,18 +52,52 @@ ActuallyExplicitEuler::ActuallyExplicitEuler(const InputParameters & parameters)
 }
 
 void
+ActuallyExplicitEuler::initialSetup()
+{
+  ExplicitTimeIntegrator::initialSetup();
+  if (_solve_type == LUMPED_CENTRAL_DIFFERENCE)
+  {
+    // _nl here so that we don't create this vector in the aux system time integrator
+    // _nl.disassociateVectorFromTag(*_nl.solutionUDot(), _u_dot_factor_tag);
+    // _nl.addVector(_u_dot_factor_tag, true, GHOSTED);
+    // _nl.disassociateVectorFromTag(*_nl.solutionUDotDot(), _u_dotdot_factor_tag);
+    // _nl.addVector(_u_dotdot_factor_tag, true, GHOSTED);
+  }
+}
+
+void
 ActuallyExplicitEuler::computeTimeDerivatives()
 {
   if (!_sys.solutionUDot())
     mooseError("ActuallyExplicitEuler: Time derivative of solution (`u_dot`) is not stored. Please "
                "set uDotRequested() to true in FEProblemBase before requesting `u_dot`.");
-  NumericVector<Number> & u_dot = *_sys.solutionUDot();
-  u_dot = *_solution;
-  computeTimeDerivativeHelper(u_dot, _solution_old);
-  u_dot.close();
+  if (_solve_type != LUMPED_CENTRAL_DIFFERENCE)
+  {
+    NumericVector<Number> & u_dot = *_sys.solutionUDot();
+    u_dot = *_solution;
+    computeTimeDerivativeHelper(u_dot, _solution_old);
 
-  _du_dot_du = 1.0 / _dt;
-  _du_dot_du = 1.0 / _dt;
+    u_dot.close();
+  }
+  else
+  {
+    NumericVector<Number> & u_dot = *_nl.solutionUDot();
+    //    u_dot = *_solution;
+    if (_t_step == 2)
+    {
+      u_dot.print();
+    }
+    u_dot.close();
+  }
+  if (_solve_type == LUMPED_CENTRAL_DIFFERENCE)
+  {
+    _du_dot_du = 1.0 / (2 * _dt);
+    _du_dotdot_du = 1.0 / (_dt * _dt);
+  }
+  else
+  {
+    _du_dot_du = 1.0 / _dt;
+  }
 }
 
 void
@@ -113,6 +149,11 @@ ActuallyExplicitEuler::solve()
   // nodes without solving for such constraints on a system level. This strategy is being used for
   // node-face contact in explicit dynamics.
   _nl.overwriteNodeFace(*_nonlinear_implicit_system->solution);
+
+  if (_t_step == 5)
+  {
+    std::cout << "debug" << std::endl;
+  }
 
   // Enforce contraints on the solution
   DofMap & dof_map = _nonlinear_implicit_system->get_dof_map();

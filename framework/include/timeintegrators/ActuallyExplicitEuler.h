@@ -24,6 +24,7 @@ public:
 
   virtual int order() override { return 1; }
   //virtual void initialSetup() override;
+  virtual void initialSetup() override;
 
   virtual void computeTimeDerivatives() override;
   void computeADTimeDerivatives(DualReal & ad_u_dot,
@@ -31,7 +32,6 @@ public:
                                 DualReal & ad_u_dotdot) const override;
   virtual void solve() override;
   virtual void postResidual(NumericVector<Number> & residual) override;
-
 protected:
   /**
    * Helper function that actually does the math for computing the time derivative
@@ -39,6 +39,8 @@ protected:
   template <typename T, typename T2>
   void computeTimeDerivativeHelper(T & u_dot, const T2 & u_old) const;
   const bool & _constant_mass;
+  Real & _du_dotdot_du;
+
 };
 
 template <typename T, typename T2>

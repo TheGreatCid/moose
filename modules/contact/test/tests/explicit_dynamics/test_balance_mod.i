@@ -15,8 +15,8 @@
         xmax = 5.5
         ymin = 4.5
         ymax = 5.5
-        zmin = 0.1
-        zmax = 1.1
+        zmin = 0.5
+        zmax = 1.5
         boundary_name_prefix = 'ball'
     []
     [block_two]
@@ -61,6 +61,19 @@
 []
 
 [AuxVariables]
+    [gravity]
+        [InitialCondition]
+            type = ConstantIC
+            value = 98.1
+        []
+    []
+    # Internal Forces
+    [Fint_x]
+    []
+    [Fint_y]
+    []
+    [Fint_z]
+    []
     [gap_rate]
     []
     [vel_x]
@@ -76,6 +89,8 @@
     [accel_z]
     []
     [penetration]
+    []
+    [explicit_accel_y]
     []
     [stress_zz]
         family = MONOMIAL
@@ -101,9 +116,32 @@
         order = CONSTANT
         family = MONOMIAL
     []
+    [potential_energy]
+        order = CONSTANT
+        family = MONOMIAL
+    []
+    [distance]
+    []
 []
 
 [AuxKernels]
+    # Calculating explicit accel
+    [explict_accel_y]
+        type = ExplicitAccelAux
+        variable = explicit_accel_y
+        Fext = gravity
+        Fint = Fint_y
+        Pc = contact_pressure
+        rho = 1e1
+        execute_on = 'TIMESTEP_END'
+        block = '1'
+        nodal_area = nodal_area
+    []
+    # [dist]
+    #     type = NearestNodeDistanceAux
+    #     paired_boundary = base_front
+    #     variable = distance
+    # []
     [penetration]
         type = PenetrationAux
         variable = penetration
@@ -124,6 +162,13 @@
         type = ElasticEnergyAux
         variable = elastic_energy_one
         block = '1'
+    []
+    [potential_energy]
+        type = FunctionAux
+        variable = potential_energy
+        function = poteng
+        use_displaced_mesh = true
+        block = 1
     []
     [kinetic_energy_two]
         type = KineticEnergyAux
@@ -195,12 +240,20 @@
     []
 []
 
+[Functions]
+    [poteng]
+        type = ParsedFunction
+        expression = 'z*98.1*1e1'
+    []
+[]
+
 [Kernels]
     [DynamicTensorMechanics]
         displacements = 'disp_x disp_y disp_z'
         volumetric_locking_correction = true
-        stiffness_damping_coefficient = 1e-3
+        stiffness_damping_coefficient = 0
         generate_output = 'stress_zz strain_zz'
+        save_in = 'Fint_x Fint_y Fint_z'
     []
     [inertia_x]
         type = InertialForce
@@ -221,7 +274,7 @@
         type = Gravity
         variable = disp_z
         value = -98.1
-        block = '1'
+        # block = '1'
     []
 []
 
@@ -278,6 +331,7 @@
         vel_x = 'vel_x'
         vel_y = 'vel_y'
         vel_z = 'vel_z'
+        overwrite_current_solution = false
     []
 []
 
@@ -338,7 +392,7 @@
 
     [TimeIntegrator]
         type = CentralDifference
-        solve_type = lumped
+        solve_type = LUMPED
     []
 []
 
@@ -401,10 +455,11 @@
         block = '2'
     []
     [total_potential_energy]
-        type = ParsedPostprocessor
-        #(Edgelength^3*rho)*gap*g
-        function = if(penetration_min>0,0,-1^3*1e1*98.1*(penetration_min-1/2))
-        pp_names = penetration_min
+        type = ElementIntegralVariablePostprocessor
+        variable = potential_energy
+        block = 1
+        # function = if(penetration_min>0,0,-1^3*1e1*98.1*(penetration_min))
+        #pp_names = penetration_min
     []
     [total_energy]
         type = ParsedPostprocessor
@@ -412,4 +467,3 @@
         pp_names = 'total_potential_energy total_elastic_energy_one total_kinetic_energy_one'
     []
 []
-        

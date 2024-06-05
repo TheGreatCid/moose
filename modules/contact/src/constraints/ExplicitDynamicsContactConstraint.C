@@ -307,7 +307,10 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   auto & u_dot = *_sys.solutionUDot();
   auto & u_old = _sys.solutionOld();
   auto & u_old_old_old = _sys.solutionState(3);
-
+  // std::cout << u_dot.size() << std::endl;
+  // u_dot.print();
+  // u_old.print();
+  // u_old_old_old.print();
   // Mass proxy for secondary node.
   const Real mass_proxy = density_secondary * wave_speed_secondary * _dt * nodal_area;
 

@@ -78,18 +78,27 @@ CentralDifference::computeTimeDerivatives()
   // Declaring u_dot and u_dotdot
   auto & u_dot = *_sys.solutionUDot();
   auto & u_dotdot = *_sys.solutionUDotDot();
-
-  // Computing derivatives
-  computeTimeDerivativeHelper(
-      u_dot, u_dotdot, _solution_old, _solution_older, _solution_old_old_old);
-
-  // make sure _u_dotdot and _u_dot are in good state
-  u_dotdot.close();
-  u_dot.close();
+  //_sys.
 
   // used for Jacobian calculations
   _du_dot_du = 1.0 / (2 * _dt);
   _du_dotdot_du = 1.0 / (_dt * _dt);
+
+  // Domain size specific to differentiate NL system from aux system
+  if (u_dot.size() < 5000 && _solve_type == LUMPED_CENTRAL_DIFFERENCE)
+  {
+    u_dotdot.close();
+    u_dot.close();
+    return;
+  }
+
+  // std::cout << " u_dot CD " << u_dot.size() << std::endl;
+  // Computing derivatives
+  computeTimeDerivativeHelper(
+      u_dot, u_dotdot, _solution_old, _solution_older, _solution_old_old_old);
+  // make sure _u_dotdot and _u_dot are in good state
+  u_dotdot.close();
+  u_dot.close();
 
   // Computing udotdot "factor"
   // u_dotdot_factor = u_dotdot - (u - u_old)/dt^2 = (u - 2* u_old + u_older - u + u_old) / dt^2

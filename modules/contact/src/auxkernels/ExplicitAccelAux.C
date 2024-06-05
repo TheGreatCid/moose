@@ -45,6 +45,7 @@ ExplicitAccelAux::computeValue()
   // if (_nodal_area[_qp] != 0)
   // {
   //   std::cout << _nodal_area[_qp] << std::endl;
+  //   mooseError("good error");
   // }
 
   if (isnan(vol))
