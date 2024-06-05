@@ -21,7 +21,8 @@ ExplicitTimeIntegrator::validParams()
 {
   InputParameters params = TimeIntegrator::validParams();
 
-  MooseEnum solve_type("consistent lumped lump_preconditioned", "consistent");
+  MooseEnum solve_type("consistent lumped lump_preconditioned lumped_central_difference",
+                       "consistent");
 
   params.addParam<MooseEnum>(
       "solve_type",
@@ -49,7 +50,8 @@ ExplicitTimeIntegrator::ExplicitTimeIntegrator(const InputParameters & parameter
   // so that it is valid to not supply solve_type in the Executioner block:
   _fe_problem.solverParams()._type = Moose::ST_LINEAR;
 
-  if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED)
+  if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED ||
+      _solve_type == LUMPED_CENTRAL_DIFFERENCE)
     _ones = &_nl.addVector("ones", false, PARALLEL);
 }
 
@@ -76,10 +78,12 @@ void
 ExplicitTimeIntegrator::meshChanged()
 {
   // Can only be done after the system is initialized
-  if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED)
+  if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED ||
+      _solve_type == LUMPED_CENTRAL_DIFFERENCE)
     *_ones = 1.;
 
-  if (_solve_type == CONSISTENT || _solve_type == LUMP_PRECONDITIONED)
+  if (_solve_type == CONSISTENT || _solve_type == LUMP_PRECONDITIONED ||
+      _solve_type == LUMPED_CENTRAL_DIFFERENCE)
     _linear_solver = LinearSolver<Number>::build(comm());
 
   if (_solve_type == LUMP_PRECONDITIONED)
@@ -115,7 +119,9 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
 
       // "Invert" the diagonal mass matrix
       _mass_matrix_diag.reciprocal();
-
+      // std::cout << _solution_update.size() << std::endl;
+      // std::cout << _mass_matrix_diag.size() << std::endl;
+      // std::cout << _explicit_residual.size() << std::endl;
       // Multiply the inversion by the RHS
       _solution_update.pointwise_mult(_mass_matrix_diag, _explicit_residual);
 
@@ -134,6 +140,51 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
       _mass_matrix_diag.reciprocal();
 
       converged = solveLinearSystem(mass_matrix);
+
+      break;
+    }
+    case LUMPED_CENTRAL_DIFFERENCE:
+    {
+
+      // Lumping mass matrix
+      mass_matrix.vector_mult(_mass_matrix_diag, *_ones);
+      // Invert the mass matrix
+      _mass_matrix_diag.reciprocal();
+      // _mass_matrix_diag.print();
+
+      // _mass_matrix_diag.print();
+      // Calculating the acceleration
+      auto & accel = *_nl.solutionUDotDot();
+      accel.pointwise_mult(_mass_matrix_diag, _explicit_residual);
+
+      // Initializing the velocity
+      auto & vel = *_nl.solutionUDot();
+      vel.zero();
+
+      auto accel_scaled = accel.clone();
+
+      // Scaling the acceleration(average dt? ask Max)
+      accel_scaled->scale((_dt));
+
+      // Adding old vel to new vel
+      auto old_vel = _nl.solutionUDotOld();
+      vel += *old_vel;
+
+      // Adding acceleration to vel
+      vel += *accel_scaled;
+      // Scaling velocity to time step
+      auto vel_scaled = vel.clone();
+
+      vel_scaled->scale(_dt);
+
+      _solution_update = *vel_scaled;
+
+      // Checking for convergence
+      auto sum = _solution_update.sum();
+      converged = std::isfinite(sum);
+
+      // Linear iterations remain zero
+      _n_linear_iterations = 0;
 
       break;
     }

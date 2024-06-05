@@ -38,15 +38,14 @@ ActuallyExplicitEuler::ActuallyExplicitEuler(const InputParameters & parameters)
 {
   if (_solve_type == LUMPED || _solve_type == LUMPED_CENTRAL_DIFFERENCE)
     _is_lumped = true;
-  _is_explicit = true;
-  // Setting intial accel to zero
-  if (LUMPED_CENTRAL_DIFFERENCE)
+  if (_solve_type == LUMPED_CENTRAL_DIFFERENCE)
   {
-    // TESTING----
+    _is_explicit = true;
+
+    // Need to request Udotold and udotdotold if using central difference
     _fe_problem.setUDotOldRequested(true);
     _fe_problem.setUDotDotRequested(true);
     _fe_problem.setUDotDotOldRequested(true);
-    //----------
   }
 }
 
@@ -64,18 +63,6 @@ ActuallyExplicitEuler::computeTimeDerivatives()
   _du_dot_du = 1.0 / _dt;
   _du_dot_du = 1.0 / _dt;
 }
-
-// // TESTING-----------------
-// void
-// ActuallyExplicitEuler::initialSetup()
-// {
-//   ExplicitTimeIntegrator::initialSetup();
-//   _nl.disassociateVectorFromTag(*_nl.solutionUDot(), _u_dot_factor_tag);
-//   _nl.addVector(_u_dot_factor_tag, true, GHOSTED);
-//   _nl.disassociateVectorFromTag(*_nl.solutionUDotDot(), _u_dotdot_factor_tag);
-//   _nl.addVector(_u_dotdot_factor_tag, true, GHOSTED);
-// }
-// //------------------------
 
 void
 ActuallyExplicitEuler::computeADTimeDerivatives(DualReal & ad_u_dot,
