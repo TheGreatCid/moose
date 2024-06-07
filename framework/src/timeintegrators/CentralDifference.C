@@ -88,7 +88,7 @@ CentralDifference::computeTimeDerivatives()
   // system (The system is linear but everything is in a nl system in MOOSE) T
   // This is very jank. Wil fix in the future. Works because nl dof ~= 2000 and aux dof ~=10000 in
   // the toy problem I am using, settlement.i
-  if (u_dot.size() < 5000 && _solve_type == LUMPED_CENTRAL_DIFFERENCE)
+  if (u_dot.size() < 500 && _solve_type == LUMPED_CENTRAL_DIFFERENCE)
   {
     u_dotdot.close();
     u_dot.close();
