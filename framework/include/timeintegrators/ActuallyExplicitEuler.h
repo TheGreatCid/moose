@@ -24,7 +24,6 @@ public:
 
   virtual int order() override { return 1; }
   //virtual void initialSetup() override;
-  virtual void initialSetup() override;
 
   virtual void computeTimeDerivatives() override;
   void computeADTimeDerivatives(DualReal & ad_u_dot,
