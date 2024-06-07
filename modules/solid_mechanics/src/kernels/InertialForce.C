@@ -132,8 +132,9 @@ InertialForceTempl<is_ad>::computeQpResidual()
   // Density scaling is a fictitious added density to increase the time step
   else if (_time_integrator.isLumped() && _time_integrator.isExplicit() && !is_ad)
   {
+    // Return 0 on the residual when using direct calculation of the acceleration
     return 0;
-    // return _test[_i][_qp] * (_density[_qp] + _density_scaling[_qp]);
+    //   return _test[_i][_qp] * (_density[_qp] + _density_scaling[_qp]);
   }
   // Consistent mass option
   // Same for explicit, implicit, and implicit with HHT
@@ -186,11 +187,13 @@ InertialForceTempl<false>::computeQpJacobian()
                  _phi[this->_j][_qp];
     else
     {
+      // This is an odd change that works. I don't understand the includsion the _du_dot terms in
+      // the mass matrix The correct acceleration is calculated when they are ommited.
       return _test[_i][_qp] * _density[_qp] * _phi[this->_j][_qp] +
              _eta[_qp] * (1 + _alpha) * _test[_i][_qp] * _density[_qp] * _phi[this->_j][_qp];
       // return _test[_i][_qp] * _density[_qp] * (*_du_dotdot_du)[_qp] * _phi[this->_j][_qp] +
-      //        _eta[_qp] * (1 + _alpha) * _test[_i][_qp] * _density[_qp] * (*_du_dot_du)[_qp] *
-      //            _phi[this->_j][_qp];
+      //_eta[_qp] * (1 + _alpha) * _test[_i][_qp] * _density[_qp] * (*_du_dot_du)[_qp] *
+      //   _phi[this->_j][_qp];
     }
   }
 }

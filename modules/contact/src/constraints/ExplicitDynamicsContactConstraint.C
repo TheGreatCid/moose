@@ -23,6 +23,7 @@
 #include "ContactLineSearchBase.h"
 #include "ExplicitDynamicsContactAction.h"
 
+#include "libmesh/mesh_base.h"
 #include "libmesh/string_to_enum.h"
 #include "libmesh/sparse_matrix.h"
 
@@ -261,7 +262,6 @@ ExplicitDynamicsContactConstraint::computeContactForce(const Node & node,
       mooseError("Invalid or unavailable contact model");
       break;
   }
-
   if (update_contact_set && pinfo->isCaptured() && !newly_captured)
   {
     const Real contact_pressure = -(pinfo->_normal * pinfo->_contact_force) / nodalArea(node);
@@ -304,21 +304,34 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   dof_id_type dof_y = node.dof_number(_sys.number(), _var_objects[1]->number(), 0);
   dof_id_type dof_z = node.dof_number(_sys.number(), _var_objects[2]->number(), 0);
 
-  auto & u_dot = *_sys.solutionUDot();
+  auto & u_dot_old = *_sys.solutionUDotOld();
   auto & u_old = _sys.solutionOld();
+
+  auto & u_dotdot = *_sys.solutionUDotDot();
+
   auto & u_old_old_old = _sys.solutionState(3);
   // std::cout << u_dot.size() << std::endl;
   // u_dot.print();
   // u_old.print();
   // u_old_old_old.print();
+
   // Mass proxy for secondary node.
-  const Real mass_proxy = density_secondary * wave_speed_secondary * _dt * nodal_area;
+  // const Real.
+  Real mass_proxy = density_secondary * wave_speed_secondary * _dt * nodal_area;
+  // std::cout << mass_proxy << std::endl;
 
   // Include effects of other forces:
+
+  // Original Fomulation
   // Initial guess: v_{n-1/2} + dt * M^{-1} * (F^{ext} - F^{int})
-  Real velocity_x = u_dot(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
-  Real velocity_y = u_dot(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
-  Real velocity_z = u_dot(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
+  // Real velocity_x = u_dot(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
+  // Real velocity_y = u_dot(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
+  // Real velocity_z = u_dot(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
+
+  // Modified formulation
+  Real velocity_x = u_dot_old(dof_x) + _dt * u_dotdot(dof_x);
+  Real velocity_y = u_dot_old(dof_y) + _dt * u_dotdot(dof_y);
+  Real velocity_z = u_dot_old(dof_z) + _dt * u_dotdot(dof_z);
 
   Real n_velocity_x = _neighbor_vel_x[0];
   Real n_velocity_y = _neighbor_vel_y[0];
@@ -341,6 +354,7 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   Real force_increment_old(0.0);
   Real lambda_iteration(0);
 
+  // Has not been modified
   while (!is_converged && iteration_no < max_no_iterations)
   {
     // Start a loop until we converge on normal contact forces

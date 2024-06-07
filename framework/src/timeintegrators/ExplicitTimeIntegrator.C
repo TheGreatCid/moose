@@ -119,9 +119,7 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
 
       // "Invert" the diagonal mass matrix
       _mass_matrix_diag.reciprocal();
-      // std::cout << _solution_update.size() << std::endl;
-      // std::cout << _mass_matrix_diag.size() << std::endl;
-      // std::cout << _explicit_residual.size() << std::endl;
+
       // Multiply the inversion by the RHS
       _solution_update.pointwise_mult(_mass_matrix_diag, _explicit_residual);
 
@@ -143,13 +141,16 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
 
       break;
     }
-    case LUMPED_CENTRAL_DIFFERENCE:
+    case LUMPED_CENTRAL_DIFFERENCE: // Direct acceleration update
     {
-
       // Lumping mass matrix
       mass_matrix.vector_mult(_mass_matrix_diag, *_ones);
       // Invert the mass matrix
+      //_mass_matrix_diag.print();
+
       _mass_matrix_diag.reciprocal();
+      //_mass_matrix_diag.print();
+
       // _mass_matrix_diag.print();
 
       // _mass_matrix_diag.print();
@@ -177,14 +178,6 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
 
       // Adding acceleration to vel
       vel += *accel_scaled;
-
-      // Copy into sys
-      //   auto & vel_sys = *_sys.solutionUDot();
-      // vel_sys.zero();
-      // vel_sys.add(vel);
-      // accel.print();
-      // vel.print();
-      // vel_sys.print();
 
       // Scaling velocity to time step
       auto vel_scaled = vel.clone();

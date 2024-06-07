@@ -42,7 +42,6 @@ ActuallyExplicitEuler::ActuallyExplicitEuler(const InputParameters & parameters)
     _is_lumped = true;
   if (_solve_type == LUMPED_CENTRAL_DIFFERENCE)
   {
-    _is_explicit = true;
 
     // Need to request Udotold and udotdotold if using central difference
     _fe_problem.setUDotOldRequested(true);
@@ -51,19 +50,20 @@ ActuallyExplicitEuler::ActuallyExplicitEuler(const InputParameters & parameters)
   }
 }
 
-void
-ActuallyExplicitEuler::initialSetup()
-{
-  ExplicitTimeIntegrator::initialSetup();
-  if (_solve_type == LUMPED_CENTRAL_DIFFERENCE)
-  {
-    // _nl here so that we don't create this vector in the aux system time integrator
-    // _nl.disassociateVectorFromTag(*_nl.solutionUDot(), _u_dot_factor_tag);
-    // _nl.addVector(_u_dot_factor_tag, true, GHOSTED);
-    // _nl.disassociateVectorFromTag(*_nl.solutionUDotDot(), _u_dotdot_factor_tag);
-    // _nl.addVector(_u_dotdot_factor_tag, true, GHOSTED);
-  }
-}
+// void
+// ActuallyExplicitEuler::initialSetup()
+// {
+//   ExplicitTimeIntegrator::initialSetup();
+//   if (_solve_type == LUMPED_CENTRAL_DIFFERENCE)
+//   {
+
+//     // _nl here so that we don't create this vector in the aux system time integrator
+//     // _nl.disassociateVectorFromTag(*_nl.solutionUDot(), _u_dot_factor_tag);
+//     // _nl.addVector(_u_dot_factor_tag, true, GHOSTED);
+//     // _nl.disassociateVectorFromTag(*_nl.solutionUDotDot(), _u_dotdot_factor_tag);
+//     // _nl.addVector(_u_dotdot_factor_tag, true, GHOSTED);
+//   }
+// }
 
 void
 ActuallyExplicitEuler::computeTimeDerivatives()
@@ -133,13 +133,12 @@ ActuallyExplicitEuler::solve()
 
   // Compute the mass matrix
   auto & mass_matrix = _nonlinear_implicit_system->get_system_matrix();
+  // mass_matrix.print();
   if (!_constant_mass || (_constant_mass && _t_step == 1))
     _fe_problem.computeJacobianTag(
         *_nonlinear_implicit_system->current_local_solution, mass_matrix, _Ke_time_tag);
-
   // Perform the linear solve
   bool converged = performExplicitSolve(mass_matrix);
-
   // Update the solution
   *_nonlinear_implicit_system->solution = _nl.solutionOld();
   *_nonlinear_implicit_system->solution += _solution_update;

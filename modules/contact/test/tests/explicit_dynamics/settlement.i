@@ -15,8 +15,8 @@
     xmax = 5.5
     ymin = 4.5
     ymax = 5.5
-    zmin = 0.0001
-    zmax = 1.0001
+    zmin = 0.5
+    zmax = 1.5
     boundary_name_prefix = 'ball'
   []
   [block_two]
@@ -113,6 +113,10 @@
     order = CONSTANT
     family = MONOMIAL
   []
+  [potential_energy]
+    order = CONSTANT
+    family = MONOMIAL
+  []
 []
 
 [AuxKernels]
@@ -131,7 +135,7 @@
     index_j = 2
     variable = strain_zz
   []
-  [accel_x]
+  [accel_x] #All of these copy the accel and vel from the time integrator into an aux variable
     type = TestNewmarkTI
     variable = accel_x
     displacement = disp_x
@@ -154,7 +158,7 @@
   [vel_y]
     type = TestNewmarkTI
     variable = vel_y
-    displacement = disp_x
+    displacement = disp_y
     execute_on = 'LINEAR TIMESTEP_BEGIN TIMESTEP_END'
   []
   [accel_z]
@@ -170,6 +174,7 @@
     displacement = disp_z
     execute_on = 'LINEAR TIMESTEP_BEGIN TIMESTEP_END'
   []
+  #----------------------------------------------------------
   [kinetic_energy_one]
     type = KineticEnergyAux
     block = '1'
@@ -198,12 +203,26 @@
     variable = elastic_energy_two
     block = '2'
   []
+  [potential_energy]
+    type = FunctionAux
+    variable = potential_energy
+    function = poteng
+    use_displaced_mesh = true
+    block = 1
+  []
+[]
+
+[Functions] #Integrand for potential energy
+  [poteng]
+    type = ParsedFunction
+    expression = 'z*98.1*1e1'
+  []
 []
 
 [Kernels]
   [DynamicTensorMechanics]
     displacements = 'disp_x disp_y disp_z'
-    stiffness_damping_coefficient = 1.0e-3
+    stiffness_damping_coefficient = 0
     generate_output = 'stress_zz strain_zz'
   []
   [inertia_x]
@@ -222,6 +241,7 @@
     type = Gravity
     variable = disp_z
     value = -98.10
+    block = 1
   []
 []
 
@@ -278,6 +298,7 @@
     vel_x = 'vel_x'
     vel_y = 'vel_y'
     vel_z = 'vel_z'
+    overwrite_current_solution = false
   []
 []
 
@@ -332,18 +353,18 @@
 [Executioner]
   type = Transient
   start_time = -0.01
-  end_time = 0.04
+  end_time = 0.3
   dt = 1.0e-4
   timestep_tolerance = 1e-6
 
-  [TimeIntegrator]
+  [TimeIntegrator] #LUMPED_CENTRAL_DIFFERENCE call my updated method
     type = CentralDifference
-    solve_type = lumped
+    solve_type = LUMPED_CENTRAL_DIFFERENCE
   []
 []
 
 [Outputs]
-  interval = 1
+  interval = 2
   exodus = true
   csv = true
   execute_on = 'TIMESTEP_END'
@@ -394,5 +415,17 @@
     type = ElementIntegralVariablePostprocessor
     variable = elastic_energy_two
     block = '2'
+  []
+  [total_potential_energy]
+    type = ElementIntegralVariablePostprocessor
+    variable = potential_energy
+    block = 1
+    # function = if(penetration_min>0,0,-1^3*1e1*98.1*(penetration_min))
+    #pp_names = penetration_min
+  []
+  [total_energy]
+    type = ParsedPostprocessor
+    function = 'total_potential_energy+total_elastic_energy_one+total_kinetic_energy_one'
+    pp_names = 'total_potential_energy total_elastic_energy_one total_kinetic_energy_one'
   []
 []

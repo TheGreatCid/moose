@@ -15,8 +15,8 @@
     xmax = 5.5
     ymin = 4.5
     ymax = 5.5
-    zmin = 0.5
-    zmax = 1.5
+    zmin = 0.00001
+    zmax = 1.00001
     boundary_name_prefix = 'ball'
   []
   [block_two]
@@ -48,7 +48,21 @@
     type = MeshCollectionGenerator
     inputs = ' block_one_id block_two_id'
   []
-  allow_renumbering = false
+[]
+
+[AuxVariables]
+  [penetration]
+  []
+[]
+
+[AuxKernels]
+  [penetration]
+    type = PenetrationAux
+    variable = penetration
+    boundary = ball_back
+    paired_boundary = base_front
+    quantity = distance
+  []
 []
 
 [Variables]
@@ -82,6 +96,26 @@
   [strain_zz]
     family = MONOMIAL
     order = CONSTANT
+  []
+  [kinetic_energy_one]
+    order = CONSTANT
+    family = MONOMIAL
+  []
+  [elastic_energy_one]
+    order = CONSTANT
+    family = MONOMIAL
+  []
+  [kinetic_energy_two]
+    order = CONSTANT
+    family = MONOMIAL
+  []
+  [elastic_energy_two]
+    order = CONSTANT
+    family = MONOMIAL
+  []
+  [potential_energy]
+    order = CONSTANT
+    family = MONOMIAL
   []
 []
 
@@ -124,7 +158,7 @@
   [vel_y]
     type = TestNewmarkTI
     variable = vel_y
-    displacement = disp_x
+    displacement = disp_y
     execute_on = 'LINEAR TIMESTEP_BEGIN TIMESTEP_END'
   []
   [accel_z]
@@ -140,13 +174,54 @@
     displacement = disp_z
     execute_on = 'LINEAR TIMESTEP_BEGIN TIMESTEP_END'
   []
+  [kinetic_energy_one]
+    type = KineticEnergyAux
+    block = '1'
+    variable = kinetic_energy_one
+    newmark_velocity_x = vel_x
+    newmark_velocity_y = vel_y
+    newmark_velocity_z = vel_z
+    density = density
+  []
+  [elastic_energy_one]
+    type = ElasticEnergyAux
+    variable = elastic_energy_one
+    block = '1'
+  []
+  [kinetic_energy_two]
+    type = KineticEnergyAux
+    block = '2'
+    variable = kinetic_energy_two
+    newmark_velocity_x = vel_x
+    newmark_velocity_y = vel_y
+    newmark_velocity_z = vel_z
+    density = density
+  []
+  [elastic_energy_two]
+    type = ElasticEnergyAux
+    variable = elastic_energy_two
+    block = '2'
+  []
+  [potential_energy]
+    type = FunctionAux
+    variable = potential_energy
+    function = poteng
+    use_displaced_mesh = true
+    block = 1
+  []
+[]
+
+[Functions]
+  [poteng]
+    type = ParsedFunction
+    expression = 'z*98.1*1e1'
+  []
 []
 
 [Kernels]
   [DynamicTensorMechanics]
     displacements = 'disp_x disp_y disp_z'
-    volumetric_locking_correction = true
-    stiffness_damping_coefficient = 0.001
+    stiffness_damping_coefficient = 1e-4
     generate_output = 'stress_zz strain_zz'
   []
   [inertia_x]
@@ -161,13 +236,11 @@
     type = InertialForce
     variable = disp_z
   []
-[]
-
-[Kernels]
   [gravity]
     type = Gravity
     variable = disp_z
-    value = -981.0
+    value = -98.10
+    block = 1
   []
 []
 
@@ -224,6 +297,7 @@
     vel_x = 'vel_x'
     vel_y = 'vel_y'
     vel_z = 'vel_z'
+    overwrite_current_solution = false
   []
 []
 
@@ -245,7 +319,7 @@
     output_properties = __all__
   []
   [strain_block]
-    type = ComputeFiniteStrain
+    type = ComputeFiniteStrain # ComputeIncrementalSmallStrain
     displacements = 'disp_x disp_y disp_z'
     implicit = false
   []
@@ -278,20 +352,22 @@
 [Executioner]
   type = Transient
   start_time = -0.01
-  end_time = 0.03 #-0.0075 # 10
-  dt = 0.00001
+  end_time = 0.3
+  dt = 1.0e-4
   timestep_tolerance = 1e-6
 
   [TimeIntegrator]
     type = CentralDifference
-    solve_type = lumped
+    solve_type = LUMPED_CENTRAL_DIFFERENCE
   []
 []
 
 [Outputs]
-  interval = 50
+  # interval = 2
   exodus = true
-  csv = true
+  file_base = 'debug'
+  csv = false
+  #execute_on = 'TIMESTEP_END'
 []
 
 [Postprocessors]
@@ -305,11 +381,6 @@
     nodeid = 1
     variable = vel_z
   []
-  [disp_58z]
-    type = NodalVariableValue
-    nodeid = 1
-    variable = disp_z
-  []
   [critical_time_step]
     type = CriticalTimeStep
   []
@@ -318,5 +389,43 @@
     variable = contact_pressure
     block = '1 2'
     value_type = max
+  []
+  [penetration_max]
+    type = NodalExtremeValue
+    variable = penetration
+    block = '1 2'
+    value_type = max
+  []
+  [total_kinetic_energy_one]
+    type = ElementIntegralVariablePostprocessor
+    variable = kinetic_energy_one
+    block = '1'
+  []
+  [total_elastic_energy_one]
+    type = ElementIntegralVariablePostprocessor
+    variable = elastic_energy_one
+    block = '1'
+  []
+  [total_kinetic_energy_two]
+    type = ElementIntegralVariablePostprocessor
+    variable = kinetic_energy_two
+    block = '2'
+  []
+  [total_elastic_energy_two]
+    type = ElementIntegralVariablePostprocessor
+    variable = elastic_energy_two
+    block = '2'
+  []
+  [total_potential_energy]
+    type = ElementIntegralVariablePostprocessor
+    variable = potential_energy
+    block = 1
+    # function = if(penetration_min>0,0,-1^3*1e1*98.1*(penetration_min))
+    #pp_names = penetration_min
+  []
+  [total_energy]
+    type = ParsedPostprocessor
+    function = 'total_potential_energy+total_elastic_energy_one+total_kinetic_energy_one'
+    pp_names = 'total_potential_energy total_elastic_energy_one total_kinetic_energy_one'
   []
 []

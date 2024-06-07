@@ -78,13 +78,16 @@ CentralDifference::computeTimeDerivatives()
   // Declaring u_dot and u_dotdot
   auto & u_dot = *_sys.solutionUDot();
   auto & u_dotdot = *_sys.solutionUDotDot();
-  //_sys.
 
   // used for Jacobian calculations
   _du_dot_du = 1.0 / (2 * _dt);
   _du_dotdot_du = 1.0 / (_dt * _dt);
 
   // Domain size specific to differentiate NL system from aux system
+  // Keeps central difference from overridding accel and vel when running through the non-linear
+  // system (The system is linear but everything is in a nl system in MOOSE) T
+  // This is very jank. Wil fix in the future. Works because nl dof ~= 2000 and aux dof ~=10000 in
+  // the toy problem I am using, settlement.i
   if (u_dot.size() < 5000 && _solve_type == LUMPED_CENTRAL_DIFFERENCE)
   {
     u_dotdot.close();
