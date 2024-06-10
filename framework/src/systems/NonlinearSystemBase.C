@@ -1325,6 +1325,7 @@ NonlinearSystemBase::constraintResiduals(NumericVector<Number> & residual, bool 
     {
       const auto & constraints =
           _constraints.getActiveNodeFaceConstraints(secondary_boundary, displaced);
+      auto & mm = _time_integrator->computeMassMatrix();
 
       for (unsigned int i = 0; i < secondary_nodes.size(); i++)
       {
@@ -1348,8 +1349,8 @@ NonlinearSystemBase::constraintResiduals(NumericVector<Number> & residual, bool 
               if (nfc->secondaryBoundary() != secondary_boundary ||
                   nfc->primaryBoundary() != primary_boundary)
                 continue;
-
-              if (nfc->shouldApply())
+              //  mm.print();
+              if (nfc->shouldApplyLumped(mm))
               {
                 constraints_applied = true;
                 nfc->computeResidual();
@@ -3722,9 +3723,8 @@ NonlinearSystemBase::needInterfaceMaterialOnSide(BoundaryID bnd_id, THREAD_ID ti
   return _interface_kernels.hasActiveBoundaryObjects(bnd_id, tid);
 }
 
-bool
-NonlinearSystemBase::needSubdomainMaterialOnSide(SubdomainID /*subdomain_id*/,
-                                                 THREAD_ID /*tid*/) const
+bool NonlinearSystemBase::needSubdomainMaterialOnSide(SubdomainID /*subdomain_id*/,
+                                                      THREAD_ID /*tid*/) const
 {
   return _doing_dg;
 }

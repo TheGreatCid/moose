@@ -10,11 +10,15 @@
 #pragma once
 
 #include "ExplicitTimeIntegrator.h"
+#include "libmesh/sparse_matrix.h"
 
 /**
  * Implements a truly explicit (no nonlinear solve) first-order, forward Euler
  * time integration scheme.
  */
+
+
+
 class ActuallyExplicitEuler : public ExplicitTimeIntegrator
 {
 public:
@@ -31,6 +35,7 @@ public:
                                 DualReal & ad_u_dotdot) const override;
   virtual void solve() override;
   virtual void postResidual(NumericVector<Number> & residual) override;
+  virtual SparseMatrix<double> & computeMassMatrix() override;
 protected:
   /**
    * Helper function that actually does the math for computing the time derivative
@@ -39,7 +44,7 @@ protected:
   void computeTimeDerivativeHelper(T & u_dot, const T2 & u_old) const;
   const bool & _constant_mass;
   Real & _du_dotdot_du;
-
+  //SparseMatrix<double> & _mass_matrix;
 };
 
 template <typename T, typename T2>
@@ -49,3 +54,5 @@ ActuallyExplicitEuler::computeTimeDerivativeHelper(T & u_dot, const T2 & u_old) 
   u_dot -= u_old;
   u_dot *= 1. / _dt;
 }
+
+

@@ -9,11 +9,13 @@
 
 // MOOSE includes
 #include "ActuallyExplicitEuler.h"
+#include "MooseTypes.h"
 #include "NonlinearSystem.h"
 #include "FEProblem.h"
 
 // libMesh includes
 #include "libmesh/nonlinear_solver.h"
+#include "libmesh/sparse_matrix.h"
 
 registerMooseObject("MooseApp", ActuallyExplicitEuler);
 
@@ -37,12 +39,13 @@ ActuallyExplicitEuler::ActuallyExplicitEuler(const InputParameters & parameters)
   : ExplicitTimeIntegrator(parameters),
     _constant_mass(getParam<bool>("use_constant_mass")),
     _du_dotdot_du(_sys.duDotDotDu())
+//_mass_matrix(_sys.associateMatrixToTag(42))
 {
   if (_solve_type == LUMPED || _solve_type == LUMPED_CENTRAL_DIFFERENCE)
     _is_lumped = true;
   if (_solve_type == LUMPED_CENTRAL_DIFFERENCE)
   {
-
+    // _sys.addMatrix(42);
     // Need to request Udotold and udotdotold if using central difference
     _fe_problem.setUDotOldRequested(true);
     _fe_problem.setUDotDotRequested(true);
@@ -132,11 +135,17 @@ ActuallyExplicitEuler::solve()
   _explicit_residual *= -1.0;
 
   // Compute the mass matrix
-  auto & mass_matrix = _nonlinear_implicit_system->get_system_matrix();
+  auto & mass_matrix = computeMassMatrix();
   // mass_matrix.print();
-  if (!_constant_mass || (_constant_mass && _t_step == 1))
-    _fe_problem.computeJacobianTag(
-        *_nonlinear_implicit_system->current_local_solution, mass_matrix, _Ke_time_tag);
+  // if (!_constant_mass || (_constant_mass && _t_step == 1))
+  // {
+  //   _fe_problem.computeJacobianTag(
+  //       *_nonlinear_implicit_system->current_local_solution, mass_matrix, _Ke_time_tag);
+  //   // TagID mm = 42;
+  //   // _sys.associateMatrixToTag(mass_matrix, mm);
+  //   // _sys.addMatrix(mm);
+  // }
+
   // Perform the linear solve
   bool converged = performExplicitSolve(mass_matrix);
   // Update the solution
@@ -174,4 +183,15 @@ ActuallyExplicitEuler::postResidual(NumericVector<Number> & residual)
 
   // Reset time to the time at which to evaluate nodal BCs, which comes next
   _fe_problem.time() = _current_time;
+}
+
+SparseMatrix<double> &
+ActuallyExplicitEuler::computeMassMatrix()
+{
+  auto & mass_matrix = _nonlinear_implicit_system->get_system_matrix();
+  // mass_matrix.print();
+  if (!_constant_mass || (_constant_mass && _t_step == 1))
+    _fe_problem.computeJacobianTag(
+        *_nonlinear_implicit_system->current_local_solution, mass_matrix, _Ke_time_tag);
+  return mass_matrix;
 }

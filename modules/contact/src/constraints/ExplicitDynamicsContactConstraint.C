@@ -9,9 +9,10 @@
 
 // MOOSE includes
 #include "ExplicitDynamicsContactConstraint.h"
-#include "FEProblem.h"
+//#include "FEProblem.h"
 #include "DisplacedProblem.h"
 #include "AuxiliarySystem.h"
+#include "MooseTypes.h"
 #include "PenetrationLocator.h"
 #include "NearestNodeLocator.h"
 #include "SystemBase.h"
@@ -24,8 +25,11 @@
 #include "ExplicitDynamicsContactAction.h"
 
 #include "libmesh/mesh_base.h"
+#include "libmesh/numeric_vector.h"
 #include "libmesh/string_to_enum.h"
 #include "libmesh/sparse_matrix.h"
+
+//#include "TimeIntegrator.h"
 
 registerMooseObject("ContactApp", ExplicitDynamicsContactConstraint);
 
@@ -193,8 +197,9 @@ ExplicitDynamicsContactConstraint::updateContactStatefulData(bool beginning_of_s
 }
 
 bool
-ExplicitDynamicsContactConstraint::shouldApply()
+ExplicitDynamicsContactConstraint::shouldApplyLumped(SparseMatrix<double> & mass_matrix)
 {
+
   if (_current_node->processor_id() != _fe_problem.processor_id())
     return false;
 
@@ -210,7 +215,7 @@ ExplicitDynamicsContactConstraint::shouldApply()
       // This computes the contact force once per constraint, rather than once per quad point
       // and for both primary and secondary cases.
       if (_component == 0)
-        computeContactForce(*_current_node, pinfo, true);
+        computeContactForce(mass_matrix, *_current_node, pinfo, true);
 
       if (pinfo->isCaptured())
         in_contact = true;
@@ -221,7 +226,8 @@ ExplicitDynamicsContactConstraint::shouldApply()
 }
 
 void
-ExplicitDynamicsContactConstraint::computeContactForce(const Node & node,
+ExplicitDynamicsContactConstraint::computeContactForce(SparseMatrix<double> & mass_matrix,
+                                                       const Node & node,
                                                        PenetrationInfo * pinfo,
                                                        bool update_contact_set)
 {
@@ -256,7 +262,7 @@ ExplicitDynamicsContactConstraint::computeContactForce(const Node & node,
       pinfo->_contact_force = pinfo->_normal * (pinfo->_normal * pen_force);
       break;
     case ExplicitDynamicsContactModel::FRICTIONLESS_BALANCE:
-      solveImpactEquations(node, pinfo, distance_vec);
+      solveImpactEquations(mass_matrix, node, pinfo, distance_vec);
       break;
     default:
       mooseError("Invalid or unavailable contact model");
@@ -274,7 +280,8 @@ ExplicitDynamicsContactConstraint::computeContactForce(const Node & node,
 }
 
 void
-ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
+ExplicitDynamicsContactConstraint::solveImpactEquations(SparseMatrix<double> & mass_matrix,
+                                                        const Node & node,
                                                         PenetrationInfo * pinfo,
                                                         const RealVectorValue & /*distance_gap*/)
 {
@@ -310,6 +317,10 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   auto & u_dotdot = *_sys.solutionUDotDot();
 
   auto & u_old_old_old = _sys.solutionState(3);
+
+  auto _mass_matrix_diag = u_dotdot.clone();
+
+  // mass_diag.print();
   // std::cout << u_dot.size() << std::endl;
   // u_dot.print();
   // u_old.print();
@@ -317,6 +328,7 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
   // Mass proxy for secondary node.
   // const Real.
+
   Real mass_proxy = density_secondary * wave_speed_secondary * _dt * nodal_area;
   // std::cout << mass_proxy << std::endl;
 
@@ -329,9 +341,12 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   // Real velocity_z = u_dot(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
 
   // Modified formulation
-  Real velocity_x = u_dot_old(dof_x) + _dt * u_dotdot(dof_x);
-  Real velocity_y = u_dot_old(dof_y) + _dt * u_dotdot(dof_y);
-  Real velocity_z = u_dot_old(dof_z) + _dt * u_dotdot(dof_z);
+  // Real velocity_x = u_dot_old(dof_x) + _dt * u_dotdot(dof_x);
+  // Real velocity_y = u_dot_old(dof_y) + _dt * u_dotdot(dof_y);
+  // Real velocity_z = u_dot_old(dof_z) + _dt * u_dotdot(dof_z);
+  Real velocity_x = u_dot_old(dof_x) + _dt / mass_matrix(dof_x, dof_x) * _residual_copy(dof_x);
+  Real velocity_y = u_dot_old(dof_y) + _dt / mass_matrix(dof_y, dof_y) * _residual_copy(dof_y);
+  Real velocity_z = u_dot_old(dof_z) + _dt / mass_matrix(dof_z, dof_z) * _residual_copy(dof_z);
 
   Real n_velocity_x = _neighbor_vel_x[0];
   Real n_velocity_y = _neighbor_vel_y[0];
@@ -490,3 +505,11 @@ ExplicitDynamicsContactConstraint::overwriteBoundaryVariables(NumericVector<Numb
     }
   }
 }
+
+// const SparseMatrix<double> &
+// ExplicitDynamicsContactConstraint::computeMassMatrixFromTimeInt(
+//     const ActuallyExplicitEuler & classname)
+// {
+//   auto & massmatrix = classname.computeMassMatrix();
+//   return massmatrix;
+// }

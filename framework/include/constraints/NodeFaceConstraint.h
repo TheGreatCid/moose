@@ -39,6 +39,13 @@ public:
   NodeFaceConstraint(const InputParameters & parameters);
   virtual ~NodeFaceConstraint();
 
+
+  virtual bool shouldApplyLumped(SparseMatrix<double> & mass_matrix)
+  {
+    if(mass_matrix.closed())
+      return true;
+    return false;
+      };
   /**
    * Compute the value the secondary node should have at the beginning of a timestep.
    */

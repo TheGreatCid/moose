@@ -14,20 +14,24 @@
 #include "PenetrationLocator.h"
 #include "TwoMaterialPropertyInterface.h"
 #include "Coupleable.h"
+//#include "NonlinearSystemBase.h"
 
 // Forward Declarations
 enum class ExplicitDynamicsContactModel;
-
+//class ActuallyExplicitEuler;
 /**
  * A ExplicitDynamicsContactConstraint does mechanical contact for explicit dynamics simulations.
  */
 class ExplicitDynamicsContactConstraint : public NodeFaceConstraint,
                                           public TwoMaterialPropertyInterface
+
 {
 public:
   static InputParameters validParams();
 
   ExplicitDynamicsContactConstraint(const InputParameters & parameters);
+
+  //const SparseMatrix<double> & computeMassMatrixFromTimeInt(const ActuallyExplicitEuler & classname);
 
   virtual void timestepSetup() override;
   virtual void jacobianSetup() override {}
@@ -61,8 +65,8 @@ public:
     return 0.0;
   }
 
-  bool shouldApply() override;
-  void computeContactForce(const Node & node, PenetrationInfo * pinfo, bool update_contact_set);
+  bool shouldApplyLumped(SparseMatrix<double> & mass_matrix) override;
+  void computeContactForce(SparseMatrix<double> & mass_matrix, const Node & node, PenetrationInfo * pinfo, bool update_contact_set);
   virtual bool isExplicitConstraint() const override { return true; }
   /**
    * Return false so that the nonlinear system does not try to add Jacobian entries
@@ -83,7 +87,8 @@ protected:
    * @param pinfo The component index computed in this routine
    * @param distance_gap The gap distance at the constraint node
    */
-  void solveImpactEquations(const Node & node,
+  void solveImpactEquations(SparseMatrix<double> & mass_matrix,
+                            const Node & node,
                             PenetrationInfo * pinfo,
                             const RealVectorValue & distance_gap);
 
@@ -139,7 +144,7 @@ protected:
 
   /// Whether to overwrite contact boundary nodal solution
   const bool _overwrite_current_solution;
-
+  //SparseMatrix<double> & mass_matrix;
 private:
   std::unordered_map<dof_id_type, Real> _dof_to_position;
 };

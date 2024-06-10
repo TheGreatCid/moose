@@ -12,6 +12,7 @@
 // MOOSE includes
 #include "MooseObject.h"
 #include "Restartable.h"
+#include "libmesh/sparse_matrix.h"
 
 class FEProblemBase;
 class SystemBase;
@@ -104,13 +105,16 @@ public:
    *   reference to _sys.duDotDu().
    */
   virtual void computeTimeDerivatives() = 0;
-
+  virtual SparseMatrix<double> & computeMassMatrix() {
+    SparseMatrix<double> & test();
+    return test();
+  }
   /**
    * method for computing local automatic differentiation time derivatives
    */
   virtual void computeADTimeDerivatives(DualReal & ad_u_dot,
                                         const dof_id_type & dof,
-                                        DualReal & ad_u_dot_dot) const = 0;
+                                        DualReal & ad_u_dot_dot) const =  0;
 
   /**
    * Gets the total number of nonlinear iterations over all stages of the time step.
