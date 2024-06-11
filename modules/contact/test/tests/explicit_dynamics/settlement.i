@@ -367,7 +367,7 @@
   interval = 2
   exodus = true
   csv = true
-  execute_on = 'TIMESTEP_END'
+  # execute_on = 'TIMESTEP_END'
 []
 
 [Postprocessors]

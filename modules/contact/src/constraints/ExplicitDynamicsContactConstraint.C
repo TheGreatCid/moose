@@ -304,7 +304,7 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   dof_id_type dof_y = node.dof_number(_sys.number(), _var_objects[1]->number(), 0);
   dof_id_type dof_z = node.dof_number(_sys.number(), _var_objects[2]->number(), 0);
 
-  auto & u_dot_old = *_sys.solutionUDotOld();
+  auto & u_dot = *_sys.solutionUDot();
   auto & u_old = _sys.solutionOld();
 
   auto & u_dotdot = *_sys.solutionUDotDot();
@@ -329,9 +329,11 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   // Real velocity_z = u_dot(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
 
   // Modified formulation
-  Real velocity_x = u_dot_old(dof_x) + _dt * u_dotdot(dof_x);
-  Real velocity_y = u_dot_old(dof_y) + _dt * u_dotdot(dof_y);
-  Real velocity_z = u_dot_old(dof_z) + _dt * u_dotdot(dof_z);
+  // u_dotdot.print();
+  // u_dot.print();
+  Real velocity_x = u_dot(dof_x) + _dt * u_dotdot(dof_x);
+  Real velocity_y = u_dot(dof_y) + _dt * u_dotdot(dof_y);
+  Real velocity_z = u_dot(dof_z) + _dt * u_dotdot(dof_z);
 
   Real n_velocity_x = _neighbor_vel_x[0];
   Real n_velocity_y = _neighbor_vel_y[0];
