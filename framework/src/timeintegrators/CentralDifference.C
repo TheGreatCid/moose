@@ -87,8 +87,11 @@ CentralDifference::computeTimeDerivatives()
   // Keeps central difference from overridding accel and vel when running through the non-linear
   // system (The system is linear but everything is in a nl system in MOOSE) T
   // This is very jank. Wil fix in the future. Works because nl dof ~= 2000 and aux dof ~=10000 in
-  // the toy problem I am using, settlement.i
-  if (u_dot.size() < 500 && _solve_type == LUMPED_CENTRAL_DIFFERENCE)
+  // the toy problem I am using, settlement.
+
+  // Make sure that the velocities calculated from the time integrator are not overwritten during nl
+  // solve
+  if (_sys.name() == "nl0" && _solve_type == LUMPED_CENTRAL_DIFFERENCE)
   {
     u_dotdot.close();
     u_dot.close();
