@@ -21,7 +21,8 @@ ExplicitTimeIntegrator::validParams()
 {
   InputParameters params = TimeIntegrator::validParams();
 
-  MooseEnum solve_type("consistent lumped lump_preconditioned", "consistent");
+  MooseEnum solve_type("consistent lumped lump_preconditioned lumped_central_difference",
+                       "consistent");
 
   params.addParam<MooseEnum>(
       "solve_type",
@@ -76,7 +77,8 @@ void
 ExplicitTimeIntegrator::meshChanged()
 {
   // Can only be done after the system is initialized
-  if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED)
+  if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED ||
+      _solve_type == LUMPED_CENTRAL_DIFFERENCE)
     *_ones = 1.;
 
   if (_solve_type == CONSISTENT || _solve_type == LUMP_PRECONDITIONED)
@@ -136,6 +138,46 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
       converged = solveLinearSystem(mass_matrix);
 
       break;
+    }
+    case LUMPED_CENTRAL_DIFFERENCE:
+    {
+      mass_matrix.vector_mult(_mass_matrix_diag, *_ones);
+
+      // "Invert" the diagonal mass matrix
+      _mass_matrix_diag.reciprocal();
+
+      // Multiply the inversion by the RHS
+      _solution_update.pointwise_mult(_mass_matrix_diag, _explicit_residual);
+
+      // Calculate acceleration
+      auto & accel = *_sys.solutionUDotDot();
+      accel.pointwise_mult(_mass_matrix_diag, _explicit_residual);
+
+      auto & vel = *_sys.solutionUDot();
+      vel.zero();
+
+      auto accel_scaled = accel.clone();
+
+      // Scaling the acceleration
+      accel_scaled->scale(_dt);
+
+      // Adding old vel to new vel
+      auto old_vel = _sys.solutionUDotOld();
+      vel += *old_vel;
+
+      auto vel_scaled = vel.clone();
+
+      _solution_update = *vel_scaled;
+
+      // Checking for convergence
+      auto sum = _solution_update.sum();
+      converged = std::isfinite(sum);
+
+      // Linear iterations remain zero
+      _n_linear_iterations = 0;
+
+      vel.close();
+      accel.close();
     }
     default:
       mooseError("Unknown solve_type in ExplicitTimeIntegrator.");
