@@ -80,6 +80,8 @@ ExplicitTimeIntegrator::meshChanged()
   if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED ||
       _solve_type == LUMPED_CENTRAL_DIFFERENCE)
     *_ones = 1.;
+  if (_solve_type == LUMPED_CENTRAL_DIFFERENCE)
+    _is_direct = true;
 
   if (_solve_type == CONSISTENT || _solve_type == LUMP_PRECONDITIONED)
     _linear_solver = LinearSolver<Number>::build(comm());
