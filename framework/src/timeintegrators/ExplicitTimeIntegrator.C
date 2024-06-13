@@ -50,7 +50,8 @@ ExplicitTimeIntegrator::ExplicitTimeIntegrator(const InputParameters & parameter
   // so that it is valid to not supply solve_type in the Executioner block:
   _fe_problem.solverParams()._type = Moose::ST_LINEAR;
 
-  if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED)
+  if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED ||
+      _solve_type == LUMPED_CENTRAL_DIFFERENCE)
     _ones = &_nl.addVector("ones", false, PARALLEL);
 }
 
@@ -143,6 +144,10 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
     }
     case LUMPED_CENTRAL_DIFFERENCE:
     {
+      if (_t_step == 15)
+      {
+        std::cout << "debug" << std::endl;
+      }
       mass_matrix.vector_mult(_mass_matrix_diag, *_ones);
 
       // "Invert" the diagonal mass matrix
@@ -166,8 +171,11 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
       // Adding old vel to new vel
       auto old_vel = _sys.solutionUDotOld();
       vel += *old_vel;
+      vel += *accel_scaled;
 
       auto vel_scaled = vel.clone();
+
+      vel_scaled->scale(_dt);
 
       _solution_update = *vel_scaled;
 
@@ -180,6 +188,7 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
 
       vel.close();
       accel.close();
+      break;
     }
     default:
       mooseError("Unknown solve_type in ExplicitTimeIntegrator.");

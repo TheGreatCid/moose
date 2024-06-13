@@ -144,6 +144,7 @@ protected:
 
 private:
   std::unordered_map<dof_id_type, Real> _dof_to_position;
+  std::unordered_map<dof_id_type, Real> _dof_to_vel;
 };
 
 inline const std::unordered_set<unsigned int> &

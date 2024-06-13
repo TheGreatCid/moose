@@ -59,7 +59,10 @@ DynamicStressDivergenceTensors::computeQpResidual()
    * = [(1+_alpha)*_zeta/dt +_alpha+1]* Div sigma - [(1+2_alpha)*_zeta/dt + _alpha] Div sigma_old +
    *_alpha*_zeta/dt Div sigma_older
    */
-
+  if (_t_step == 15)
+  {
+    std::cout << "Debug" << std::endl;
+  }
   Real residual = 0.0;
   if (_static_initialization && _t == _dt)
   {

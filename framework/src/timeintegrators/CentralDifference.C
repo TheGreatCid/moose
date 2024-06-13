@@ -72,6 +72,15 @@ CentralDifference::computeTimeDerivatives()
     mooseError("CentralDifference: Time derivative of solution (`u_dotdot`) is not stored. Please "
                "set uDotDotRequested() to true in FEProblemBase before requesting `u_dot`.");
 
+  if (_t_step == 15)
+  {
+    std::cout << "debug" << std::endl;
+  }
+  if (_sys.name() == "nl0" && _solve_type == "LUMPED_CENTRAL_DIFFERENCE")
+  {
+    return;
+  }
+
   // Declaring u_dot and u_dotdot
   auto & u_dot = *_sys.solutionUDot();
   auto & u_dotdot = *_sys.solutionUDotDot();
