@@ -74,6 +74,13 @@ ActuallyExplicitEuler::solve()
   _fe_problem.time() = _fe_problem.timeOld();
   _nonlinear_implicit_system->update();
 
+  // Compute the mass matrix
+  auto & mass_matrix = _nonlinear_implicit_system->get_system_matrix();
+  if (!_constant_mass || (_constant_mass && _t_step == 1))
+    _fe_problem.computeJacobianTag(
+        *_nonlinear_implicit_system->current_local_solution, mass_matrix, _Ke_time_tag);
+  mass_matrix.vector_mult(_mass_matrix_diag, *_ones);
+
   // Compute the residual
   _explicit_residual.zero();
   _fe_problem.computeResidual(
@@ -81,12 +88,6 @@ ActuallyExplicitEuler::solve()
 
   // Move the residual to the RHS
   _explicit_residual *= -1.0;
-
-  // Compute the mass matrix
-  auto & mass_matrix = _nonlinear_implicit_system->get_system_matrix();
-  if (!_constant_mass || (_constant_mass && _t_step == 1))
-    _fe_problem.computeJacobianTag(
-        *_nonlinear_implicit_system->current_local_solution, mass_matrix, _Ke_time_tag);
 
   // Perform the linear solve
   bool converged = performExplicitSolve(mass_matrix);
@@ -99,15 +100,16 @@ ActuallyExplicitEuler::solve()
   // solved node-wise and then the solution (e.g. velocities or positions)can be applied to those
   // nodes without solving for such constraints on a system level. This strategy is being used for
   // node-face contact in explicit dynamics.
-  _nl.overwriteNodeFace(*_nonlinear_implicit_system->solution);
 
-  // Enforce contraints on the solution
-  DofMap & dof_map = _nonlinear_implicit_system->get_dof_map();
-  dof_map.enforce_constraints_exactly(*_nonlinear_implicit_system,
-                                      _nonlinear_implicit_system->solution.get());
-  _nonlinear_implicit_system->update();
+  // _nl.overwriteNodeFace(*_nonlinear_implicit_system->solution);
 
-  _nl.setSolution(*_nonlinear_implicit_system->current_local_solution);
+  // // Enforce contraints on the solution
+  // DofMap & dof_map = _nonlinear_implicit_system->get_dof_map();
+  // dof_map.enforce_constraints_exactly(*_nonlinear_implicit_system,
+  //                                     _nonlinear_implicit_system->solution.get());
+  // _nonlinear_implicit_system->update();
+
+  // _nl.setSolution(*_nonlinear_implicit_system->current_local_solution);
 
   _nonlinear_implicit_system->nonlinear_solver->converged = converged;
 }

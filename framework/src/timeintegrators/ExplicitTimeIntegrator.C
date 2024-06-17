@@ -144,22 +144,19 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
     }
     case LUMPED_CENTRAL_DIFFERENCE:
     {
-      if (_t_step == 15)
-      {
-        std::cout << "debug" << std::endl;
-      }
+      // if (_t_step == 15)
+      // {
+      //   std::cout << "debug" << std::endl;
+      // }
       mass_matrix.vector_mult(_mass_matrix_diag, *_ones);
 
       // "Invert" the diagonal mass matrix
       _mass_matrix_diag.reciprocal();
 
-      // Multiply the inversion by the RHS
-      _solution_update.pointwise_mult(_mass_matrix_diag, _explicit_residual);
-
       // Calculate acceleration
       auto & accel = *_sys.solutionUDotDot();
       accel.pointwise_mult(_mass_matrix_diag, _explicit_residual);
-
+      // accel.print();
       auto & vel = *_sys.solutionUDot();
       vel.zero();
 

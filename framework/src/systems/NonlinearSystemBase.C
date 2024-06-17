@@ -1386,7 +1386,15 @@ NonlinearSystemBase::constraintResiduals(NumericVector<Number> & residual, bool 
               if (nfc->secondaryBoundary() != secondary_boundary ||
                   nfc->primaryBoundary() != primary_boundary)
                 continue;
-
+              // Get accel with direct calculation if using direct accel calculation
+              if (_time_integrator->isDirect())
+              {
+                _time_integrator->computeDirectTimeDerivatives(residual);
+              }
+              else
+              {
+                _time_integrator->computeTimeDerivatives();
+              }
               if (nfc->shouldApply())
               {
                 constraints_applied = true;

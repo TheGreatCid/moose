@@ -12,6 +12,8 @@
 // MOOSE includes
 #include "MooseObject.h"
 #include "Restartable.h"
+#include "libmesh/id_types.h"
+#include "libmesh/libmesh_common.h"
 
 class FEProblemBase;
 class SystemBase;
@@ -157,6 +159,12 @@ public:
    * By default, this tag will be associated with udotdot.
    */
   TagID uDotDotFactorTag() const { return _u_dotdot_factor_tag; }
+
+  virtual void computeDirectTimeDerivatives(NumericVector<Number> & residual)
+  {
+    residual.type();
+    std::cout << "not using direct" << std::endl;
+  }
 
 protected:
   /**

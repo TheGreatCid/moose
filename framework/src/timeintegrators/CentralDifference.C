@@ -62,6 +62,34 @@ CentralDifference::initialSetup()
 }
 
 void
+CentralDifference::computeDirectTimeDerivatives(NumericVector<Number> & residual)
+{
+  auto & u_dotdot = *_sys.solutionUDotDot();
+  auto & u_dot = *_sys.solutionUDot();
+
+  _mass_matrix_diag.reciprocal();
+
+  u_dotdot.pointwise_mult(_mass_matrix_diag, residual);
+
+  auto u_dotdot_scaled = u_dotdot.clone();
+  u_dotdot_scaled->scale(_dt);
+
+  auto old_vel = _sys.solutionUDotOld();
+  u_dot += *old_vel;
+  u_dot += *u_dotdot_scaled;
+
+  // Account for resid being on RHS
+  u_dotdot.scale(-1);
+  // u_dot.scale(-1);
+  // auto & massmatrix = _nonlinear_implicit_system->get_system_matrix();
+  // massmatrix.print();
+  // residual.print();
+  // u_dotdot.print();
+  u_dotdot.close();
+  u_dot.close();
+}
+
+void
 CentralDifference::computeTimeDerivatives()
 {
   if (!_sys.solutionUDot())
@@ -72,11 +100,19 @@ CentralDifference::computeTimeDerivatives()
     mooseError("CentralDifference: Time derivative of solution (`u_dotdot`) is not stored. Please "
                "set uDotDotRequested() to true in FEProblemBase before requesting `u_dot`.");
 
-  if (_t_step == 15)
-  {
-    std::cout << "debug" << std::endl;
-  }
-  if (_sys.name() == "nl0" && _solve_type == "LUMPED_CENTRAL_DIFFERENCE")
+  // if (_t_step == 15)
+  // {
+  //   std::cout << "debug" << std::endl;
+  // }
+  // if (_sys.name() == "nl0" && _solve_type == "LUMPED_CENTRAL_DIFFERENCE")
+  // {
+  //   // Get residual from previous time step?
+  //   _mass_matrix_diag.print();
+  //   auto & yes = _sys.residualCopy();
+  //   yes.print();
+  //   return;
+  // }
+  if (_sys.name() == "nl0")
   {
     return;
   }
@@ -87,11 +123,20 @@ CentralDifference::computeTimeDerivatives()
 
   u_dot = *_solution;
   u_dotdot = *_solution;
-
+  // if (_sys.name() == "nl0")
+  // {
+  //   auto & mass = _nonlinear_implicit_system->get_system_matrix();
+  //   mass.print();
+  //   int tag = _sys.residualVectorTag();
+  //   auto & resid = _sys.getVector(tag);
+  //   resid.print();
+  // }
   // Computing derivatives
   computeTimeDerivativeHelper(u_dot, u_dotdot, _solution_old, _solution_older);
 
   // make sure _u_dotdot and _u_dot are in good state
+  // u_dotdot.scale(-1);
+  // u_dot.scale(-1);
   u_dotdot.close();
   u_dot.close();
 

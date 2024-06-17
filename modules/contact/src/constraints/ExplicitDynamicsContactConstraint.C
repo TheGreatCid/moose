@@ -318,12 +318,16 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
   // Include effects of other forces:
   // Initial guess: v_{n-1/2} + dt * M^{-1} * (F^{ext} - F^{int})
-  // Real velocity_x = u_dot(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
-  // Real velocity_y = u_dot(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
-  // Real velocity_z = u_dot(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
-  Real velocity_x = u_dot(dof_x) + _dt * u_dotdot(dof_x);
-  Real velocity_y = u_dot(dof_y) + _dt * u_dotdot(dof_y);
-  Real velocity_z = u_dot(dof_z) + _dt * u_dotdot(dof_z);
+  Real velocity_x = u_dotold(dof_x) + _dt * u_dotdot(dof_x);
+  Real velocity_y = u_dotold(dof_y) + _dt * u_dotdot(dof_y);
+  Real velocity_z = u_dotold(dof_z) + _dt * u_dotdot(dof_z);
+
+  // velocity_x *= -1;
+  // velocity_y *= -1;
+  // velocity_z *= -1;
+  // Real velocity_x = u_dot(dof_x) + _dt * u_dotdot(dof_x);
+  // Real velocity_y = u_dot(dof_y) + _dt * u_dotdot(dof_y);
+  // Real velocity_z = u_dot(dof_z) + _dt * u_dotdot(dof_z);
 
   Real n_velocity_x = _neighbor_vel_x[0];
   Real n_velocity_y = _neighbor_vel_y[0];
@@ -396,9 +400,9 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   // u_dot.set(dof_y, velocity_y);
   // u_dot.set(dof_z, velocity_z);
 
-  _dof_to_vel[dof_x] = velocity_x;
-  _dof_to_vel[dof_y] = velocity_y;
-  _dof_to_vel[dof_z] = velocity_z;
+  // _dof_to_vel[dof_x] = velocity_x;
+  // _dof_to_vel[dof_y] = velocity_y;
+  // _dof_to_vel[dof_z] = velocity_z;
 
   // _dof_to_position[dof_x] = u_old(dof_x) + velocity_x * _dt;
   // _dof_to_position[dof_y] = u_old(dof_y) + velocity_y * _dt;
@@ -407,6 +411,7 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   pinfo->_contact_force = pinfo->_normal * lambda_iteration;
   u_dot.close();
   u_dotold.close();
+  u_dotdot.close();
 }
 
 Real
@@ -477,33 +482,32 @@ void
 ExplicitDynamicsContactConstraint::overwriteBoundaryVariables(NumericVector<Number> & soln,
                                                               const Node & secondary_node) const
 {
-  if (_component == 0)
-  {
-    dof_id_type dof_x = secondary_node.dof_number(_sys.number(), _var_objects[0]->number(), 0);
-    dof_id_type dof_y = secondary_node.dof_number(_sys.number(), _var_objects[1]->number(), 0);
-    dof_id_type dof_z = secondary_node.dof_number(_sys.number(), _var_objects[2]->number(), 0);
+  // if (_component == 0)
+  // {
+  //   dof_id_type dof_x = secondary_node.dof_number(_sys.number(), _var_objects[0]->number(), 0);
+  //   dof_id_type dof_y = secondary_node.dof_number(_sys.number(), _var_objects[1]->number(), 0);
+  //   dof_id_type dof_z = secondary_node.dof_number(_sys.number(), _var_objects[2]->number(), 0);
 
-    auto & u_dot = *_sys.solutionUDot();
-    auto & u = _sys.solution();
-    if (_dof_to_position.find(dof_x) != _dof_to_position.end())
-    {
-      // const auto & position_x = libmesh_map_find(_dof_to_position, dof_x);
-      // const auto & position_y = libmesh_map_find(_dof_to_position, dof_y);
-      // const auto & position_z = libmesh_map_find(_dof_to_position, dof_z);
+  //   auto & u_dot = *_sys.solutionUDot();
+  //   auto & u_old = _sys.solutionOld();
+  //   if (_dof_to_position.find(dof_x) != _dof_to_position.end())
+  //   {
+  //     // const auto & position_x = libmesh_map_find(_dof_to_position, dof_x);
+  //     // const auto & position_y = libmesh_map_find(_dof_to_position, dof_y);
+  //     // const auto & position_z = libmesh_map_find(_dof_to_position, dof_z);
 
-      const auto & vel_x = libmesh_map_find(_dof_to_vel, dof_x);
-      const auto & vel_y = libmesh_map_find(_dof_to_vel, dof_y);
-      const auto & vel_z = libmesh_map_find(_dof_to_vel, dof_z);
+  //     const auto & vel_x = libmesh_map_find(_dof_to_vel, dof_x);
+  //     const auto & vel_y = libmesh_map_find(_dof_to_vel, dof_y);
+  //     const auto & vel_z = libmesh_map_find(_dof_to_vel, dof_z);
 
-      u_dot.set(dof_x, vel_x);
-      u_dot.set(dof_y, vel_y);
-      u_dot.set(dof_z, vel_z);
+  //     u_dot.set(dof_x, vel_x);
+  //     u_dot.set(dof_y, vel_y);
+  //     u_dot.set(dof_z, vel_z);
 
-      // soln.set(dof_x, position_x);
-      // soln.set(dof_y, position_y);
-      // soln.set(dof_z, position_z);
-    }
-    u_dot.close();
-    u.close();
-  }
+  //     soln.set(dof_x, u_old(dof_x) + vel_x * _dt);
+  //     soln.set(dof_y, u_old(dof_y) + vel_y * _dt);
+  //     soln.set(dof_z, u_old(dof_z) + vel_z * _dt);
+  //   }
+  //   u_dot.close();
+  // }
 }
