@@ -12,6 +12,7 @@
 #include "FEProblem.h"
 #include "DisplacedProblem.h"
 #include "AuxiliarySystem.h"
+#include "MooseError.h"
 #include "PenetrationLocator.h"
 #include "NearestNodeLocator.h"
 #include "SystemBase.h"
@@ -23,6 +24,7 @@
 #include "ContactLineSearchBase.h"
 #include "ExplicitDynamicsContactAction.h"
 
+#include "libmesh/libmesh_common.h"
 #include "libmesh/string_to_enum.h"
 #include "libmesh/sparse_matrix.h"
 
@@ -318,9 +320,13 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
   // Include effects of other forces:
   // Initial guess: v_{n-1/2} + dt * M^{-1} * (F^{ext} - F^{int})
-  Real velocity_x = u_dotold(dof_x) + _dt * u_dotdot(dof_x);
-  Real velocity_y = u_dotold(dof_y) + _dt * u_dotdot(dof_y);
-  Real velocity_z = u_dotold(dof_z) + _dt * u_dotdot(dof_z);
+  // Real velocity_x = u_dotold(dof_x) + _dt * u_dotdot(dof_x);
+  // Real velocity_y = u_dotold(dof_y) + _dt * u_dotdot(dof_y);
+  // Real velocity_z = u_dotold(dof_z) + _dt * u_dotdot(dof_z);
+
+  Real velocity_x = u_dotold(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
+  Real velocity_y = u_dotold(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
+  Real velocity_z = u_dotold(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
 
   // velocity_x *= -1;
   // velocity_y *= -1;
@@ -340,61 +346,96 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   gap_rate = pinfo->_normal * (secondary_velocity - closest_point_velocity);
 
   // Prepare equilibrium loop
-  bool is_converged(false);
-  unsigned int iteration_no(0);
+  // unsigned int iteration_no(0);
   const unsigned int max_no_iterations(20000);
 
   // Initialize augmented iteration variable
-  Real gap_rate_old(0.0);
-  Real force_increment(0.0);
-  Real force_increment_old(0.0);
+  // Real gap_rate_old(0.0);
+  // Real force_increment(0.0);
+  // Real force_increment_old(0.0);
   Real lambda_iteration(0);
-
-  while (!is_converged && iteration_no < max_no_iterations)
+  Real penalty = 1e3;
+  Real gap_threshold = 1e-6;
+  Real penalty_force = 0.0;
+  Real tolerance = 1e-8;
+  Real force = 0.0;
+  Real gap = pinfo->_distance; // Positive distance indicates penetration
+  double disp = 0.0;
+  // Penalty Method
+  for (unsigned int iteration = 0; iteration < max_no_iterations; ++iteration)
   {
-    // Start a loop until we converge on normal contact forces
-    gap_rate_old = gap_rate;
-    gap_rate = pinfo->_normal * (secondary_velocity - closest_point_velocity);
-    force_increment_old = force_increment;
-
-    force_increment = mass_contact_pressure * gap_rate;
-
-    velocity_x -= _dt / mass_proxy * (pinfo->_normal(0) * (force_increment));
-    velocity_y -= _dt / mass_proxy * (pinfo->_normal(1) * (force_increment));
-    velocity_z -= _dt / mass_proxy * (pinfo->_normal(2) * (force_increment));
-
-    // Let's not modify the neighbor velocity, but apply the corresponding force.
-    // TODO: Update for multi-body impacts
-    // n_velocity_x = n_velocity_x;
-    // n_velocity_y = n_velocity_y;
-    // n_velocity_z = n_velocity_z;
-
-    secondary_velocity = {velocity_x, velocity_y, _mesh.dimension() == 3 ? velocity_z : 0.0};
-    closest_point_velocity = {
-        n_velocity_x, n_velocity_y, _mesh.dimension() == 3 ? n_velocity_z : 0.0};
-
-    // Convergence check
-    lambda_iteration += force_increment;
-
-    const Real relative_error = (force_increment - force_increment_old) / force_increment;
-    const Real absolute_error = std::abs(force_increment);
-
-    if (std::abs(relative_error) < TOLERANCE * TOLERANCE || absolute_error < TOLERANCE ||
-        (gap_rate_old) * (gap_rate) < 0.0)
-      is_converged = true;
-    else
-      iteration_no++;
+    gap = pinfo->_distance - disp;
+    if (gap >= gap_threshold)
+    {
+      penalty_force = penalty * (gap - gap_threshold);
+      force += penalty_force;
+    }
+    double new_disp = force / penalty;
+    // Check convergence
+    if (abs(new_disp - disp) < tolerance)
+      break;
+    disp = new_disp;
+    if (iteration + 1 == max_no_iterations)
+      mooseError("Hit max it");
   }
 
+  // std::cout << "Force = " << force << "\n Penalty Force = " << penalty_force << "\n disp = " <<
+  // disp
+  //           << "\n gap = " << gap << std::endl;
+  // while (iteration_no < max_no_iterations)
+  // {
+  //   // Start a loop until we converge on normal contact forces
+  //   gap_rate_old = gap_rate;
+  //   gap_rate = pinfo->_normal * (secondary_velocity - closest_point_velocity);
+  //   // force_increment_old = force_increment;
+
+  //   force_increment = mass_contact_pressure * gap_rate;
+
+  //   velocity_x -= _dt / mass_proxy * (pinfo->_normal(0) * (force_increment));
+  //   velocity_y -= _dt / mass_proxy * (pinfo->_normal(1) * (force_increment));
+  //   velocity_z -= _dt / mass_proxy * (pinfo->_normal(2) * (force_increment));
+
+  //   // Let's not modify the neighbor velocity, but apply the corresponding force.
+  //   // TODO: Update for multi-body impacts
+  //   // n_velocity_x = n_velocity_x;
+  //   // n_velocity_y = n_velocity_y;
+  //   // n_velocity_z = n_velocity_z;
+
+  //   secondary_velocity = {velocity_x, velocity_y, _mesh.dimension() == 3 ? velocity_z : 0.0};
+  //   closest_point_velocity = {
+  //       n_velocity_x, n_velocity_y, _mesh.dimension() == 3 ? n_velocity_z : 0.0};
+
+  //   // Convergence check
+  //   lambda_iteration += force_increment;
+
+  //   // const Real relative_error = (force_increment - force_increment_old) / force_increment;
+  //   const Real absolute_error = std::abs(force_increment);
+
+  //   if (absolute_error < TOLERANCE || (gap_rate_old) * (gap_rate) < 0.0)
+  //     break;
+
+  //   iteration_no++;
+  // }
+
+  gap_rate = 0;
+  // lambda_iteration = velocity_z / _dt * mass_proxy * 100;
+  lambda_iteration = -force;
+  // std::cout << "ITERATIONS = " << iteration_no << std::endl;
   _gap_rate->setNodalValue(gap_rate);
+
+  // std::cout << 0.036 / (8 * density_secondary * wave_speed_secondary * wave_speed_secondary *
+  // _dt
+  // *
+  //                       nodal_area)
+  //           << std::endl;
 
   // u_old.set(dof_x, _u_old_old_old(dof_x) + 2.0 * velocity_x * _dt);
   // u_old.set(dof_y, _u_old_old_old(dof_y) + 2.0 * velocity_y * _dt);
   // u_old.set(dof_z, _u_old_old_old(dof_z) + 2.0 * velocity_z * _dt);
 
-  u_dotold.set(dof_x, velocity_x);
-  u_dotold.set(dof_y, velocity_y);
-  u_dotold.set(dof_z, velocity_z);
+  // u_dotold.set(dof_x, velocity_x);
+  // u_dotold.set(dof_y, velocity_y);
+  // u_dotold.set(dof_z, velocity_z);
 
   // u_dot.set(dof_x, velocity_x);
   // u_dot.set(dof_y, velocity_y);
