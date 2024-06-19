@@ -354,7 +354,7 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   // Real force_increment(0.0);
   // Real force_increment_old(0.0);
   Real lambda_iteration(0);
-  Real penalty = 1e3;
+  Real penalty = 1e6;
   Real gap_threshold = 1e-6;
   Real penalty_force = 0.0;
   Real tolerance = 1e-8;
