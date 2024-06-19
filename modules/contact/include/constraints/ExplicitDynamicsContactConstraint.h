@@ -63,6 +63,9 @@ public:
 
   bool shouldApply() override;
   void computeContactForce(const Node & node, PenetrationInfo * pinfo, bool update_contact_set);
+
+  void penaltyEnforcement(PenetrationInfo * pinfo);
+
   virtual bool isExplicitConstraint() const override { return true; }
   /**
    * Return false so that the nonlinear system does not try to add Jacobian entries
@@ -140,7 +143,11 @@ protected:
   /// Whether to overwrite contact boundary nodal solution
   const bool _overwrite_current_solution;
 
-  const NumericVector<Number> & _u_old_old_old;
+  const bool _direct;
+
+  const bool _penalty_enforcement;
+
+  const Real _penalty_stiffness;
 
 private:
   std::unordered_map<dof_id_type, Real> _dof_to_position;
