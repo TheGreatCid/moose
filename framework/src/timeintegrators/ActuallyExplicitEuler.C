@@ -51,7 +51,6 @@ ActuallyExplicitEuler::computeTimeDerivatives()
   u_dot.close();
 
   _du_dot_du = 1.0 / _dt;
-
 }
 
 void
@@ -95,9 +94,9 @@ ActuallyExplicitEuler::solve()
   _explicit_residual *= -1.0;
 
   // Compute the mass matrix
-  mass_matrix = _nonlinear_implicit_system->get_system_matrix();
-  if ((!_constant_mass || (_constant_mass && _t_step == 1)) &&
-      _solve_type != LUMPED_CENTRAL_DIFFERENCE)
+  auto & mass_matrix = _nonlinear_implicit_system->get_system_matrix();
+  // Compute the mass matrix
+  if (!_constant_mass || (_constant_mass && _t_step == 1))
     _fe_problem.computeJacobianTag(
         *_nonlinear_implicit_system->current_local_solution, mass_matrix, _Ke_time_tag);
 
@@ -124,6 +123,10 @@ ActuallyExplicitEuler::solve()
   _nl.setSolution(*_nonlinear_implicit_system->current_local_solution);
 
   _nonlinear_implicit_system->nonlinear_solver->converged = converged;
+
+  // Setting nodal BC's if using a direct time integrator
+  if (_is_direct)
+    _nl.setInitialSolution();
 }
 
 void

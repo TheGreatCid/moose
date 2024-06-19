@@ -10,6 +10,7 @@
 #pragma once
 
 // MOOSE includes
+#include "MooseError.h"
 #include "MooseObject.h"
 #include "Restartable.h"
 #include "libmesh/id_types.h"

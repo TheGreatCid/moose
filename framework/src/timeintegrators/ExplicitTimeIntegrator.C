@@ -121,16 +121,44 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
       // "Invert" the diagonal mass matrix
       _mass_matrix_diag.reciprocal();
 
-      // Multiply the inversion by the RHS
-      _solution_update.pointwise_mult(_mass_matrix_diag, _explicit_residual);
+      if (_is_direct)
+      {
+        // Calculate acceleration
+        auto & accel = *_sys.solutionUDotDot();
+        accel.pointwise_mult(_mass_matrix_diag, _explicit_residual);
+        // accel.print();
+        auto & vel = *_sys.solutionUDot();
+        vel.zero();
 
+        auto accel_scaled = accel.clone();
+
+        // Scaling the acceleration
+        accel_scaled->scale(_dt);
+
+        // Adding old vel to new vel
+        auto old_vel = _sys.solutionUDotOld();
+        vel += *old_vel;
+        vel += *accel_scaled;
+
+        auto vel_scaled = vel.clone();
+
+        vel_scaled->scale(_dt);
+
+        _solution_update = *vel_scaled;
+
+        vel.close();
+        accel.close();
+      }
+      else
+      {
+        // Multiply the inversion by the RHS
+        _solution_update.pointwise_mult(_mass_matrix_diag, _explicit_residual);
+      }
       // Check for convergence by seeing if there is a nan or inf
       auto sum = _solution_update.sum();
       converged = std::isfinite(sum);
-
       // The linear iteration count remains zero
       _n_linear_iterations = 0;
-
       break;
     }
     case LUMP_PRECONDITIONED:
@@ -140,51 +168,6 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
 
       converged = solveLinearSystem(mass_matrix);
 
-      break;
-    }
-    case LUMPED_CENTRAL_DIFFERENCE:
-    {
-      // if (_t_step == 15)
-      // {
-      //   std::cout << "debug" << std::endl;
-      // }
-      mass_matrix.vector_mult(_mass_matrix_diag, *_ones);
-
-      // "Invert" the diagonal mass matrix
-      _mass_matrix_diag.reciprocal();
-
-      // Calculate acceleration
-      auto & accel = *_sys.solutionUDotDot();
-      accel.pointwise_mult(_mass_matrix_diag, _explicit_residual);
-      // accel.print();
-      auto & vel = *_sys.solutionUDot();
-      vel.zero();
-
-      auto accel_scaled = accel.clone();
-
-      // Scaling the acceleration
-      accel_scaled->scale(_dt);
-
-      // Adding old vel to new vel
-      auto old_vel = _sys.solutionUDotOld();
-      vel += *old_vel;
-      vel += *accel_scaled;
-
-      auto vel_scaled = vel.clone();
-
-      vel_scaled->scale(_dt);
-
-      _solution_update = *vel_scaled;
-
-      // Checking for convergence
-      auto sum = _solution_update.sum();
-      converged = std::isfinite(sum);
-
-      // Linear iterations remain zero
-      _n_linear_iterations = 0;
-
-      vel.close();
-      accel.close();
       break;
     }
     default:
