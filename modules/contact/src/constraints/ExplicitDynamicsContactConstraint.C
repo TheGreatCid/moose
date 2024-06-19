@@ -297,19 +297,22 @@ ExplicitDynamicsContactConstraint::penaltyEnforcement(PenetrationInfo * pinfo)
   Real gap_threshold = 1e-6;  // Target gap length
   Real max_iteration = 20000; // Max iterations
   Real tolerance = 1e-8;      // Convergence tolerance
-  Real penalty_force = 0.0;
+  Real penalty_force = 0.0;   // Initialize forces
   Real force = 0.0;
   Real gap = pinfo->_distance; // Positive distance indicates penetration
   double disp = 0.0;
   // Penalty Method
   for (unsigned int iteration = 0; iteration < max_iteration; ++iteration)
   {
+    // Update gap distance
     gap = pinfo->_distance - disp;
     if (gap >= gap_threshold)
     {
+      // Get penalty force
       penalty_force = _penalty_stiffness * (gap - gap_threshold);
       force += penalty_force;
     }
+    // Update displacement
     double new_disp = force / _penalty_stiffness;
     // Check convergence
     if (abs(new_disp - disp) < tolerance)
@@ -353,19 +356,17 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   dof_id_type dof_y = node.dof_number(_sys.number(), _var_objects[1]->number(), 0);
   dof_id_type dof_z = node.dof_number(_sys.number(), _var_objects[2]->number(), 0);
 
-  // auto & u = _sys.solution();
-  //  auto & u_old = _sys.solutionState(1);
+  auto & u_dot = *_sys.solutionUDot();
   auto & u_old = _sys.solutionOld();
-  auto & u_dotold = *_sys.solutionUDotOld();
   auto & u_old_old = _sys.solutionOlder();
   // Mass proxy for secondary node.
   const Real mass_proxy = density_secondary * wave_speed_secondary * _dt * nodal_area;
 
   // Include effects of other forces:
   // Initial guess: v_{n-1/2} + dt * M^{-1} * (F^{ext} - F^{int})
-  Real velocity_x = u_dotold(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
-  Real velocity_y = u_dotold(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
-  Real velocity_z = u_dotold(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
+  Real velocity_x = u_dot(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
+  Real velocity_y = u_dot(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
+  Real velocity_z = u_dot(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
 
   Real n_velocity_x = _neighbor_vel_x[0];
   Real n_velocity_y = _neighbor_vel_y[0];
@@ -378,19 +379,22 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   gap_rate = pinfo->_normal * (secondary_velocity - closest_point_velocity);
 
   // Prepare equilibrium loop
+  bool is_converged(false);
   unsigned int iteration_no(0);
   const unsigned int max_no_iterations(20000);
 
   // Initialize augmented iteration variable
   Real gap_rate_old(0.0);
   Real force_increment(0.0);
+  Real force_increment_old(0.0);
   Real lambda_iteration(0);
-  while (iteration_no < max_no_iterations)
+
+  while (!is_converged && iteration_no < max_no_iterations)
   {
     // Start a loop until we converge on normal contact forces
     gap_rate_old = gap_rate;
     gap_rate = pinfo->_normal * (secondary_velocity - closest_point_velocity);
-    // force_increment_old = force_increment;
+    force_increment_old = force_increment;
 
     force_increment = mass_contact_pressure * gap_rate;
 
@@ -411,13 +415,14 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
     // Convergence check
     lambda_iteration += force_increment;
 
-    // const Real relative_error = (force_increment - force_increment_old) / force_increment;
+    const Real relative_error = (force_increment - force_increment_old) / force_increment;
     const Real absolute_error = std::abs(force_increment);
 
-    if (absolute_error < TOLERANCE || (gap_rate_old) * (gap_rate) < 0.0)
-      break;
-
-    iteration_no++;
+    if (std::abs(relative_error) < TOLERANCE * TOLERANCE || absolute_error < TOLERANCE ||
+        (gap_rate_old) * (gap_rate) < 0.0)
+      is_converged = true;
+    else
+      iteration_no++;
   }
 
   _gap_rate->setNodalValue(gap_rate);
@@ -431,7 +436,6 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   _dof_to_position[dof_z] = u_old_old(dof_z) + velocity_z * _dt;
 
   pinfo->_contact_force = pinfo->_normal * lambda_iteration;
-  u_dotold.close();
 }
 
 Real

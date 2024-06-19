@@ -154,7 +154,6 @@ ExplicitDynamicsContactAction::act()
 
     addContactPressureAuxKernel();
   }
-
   if (_current_task == "add_contact_aux_variable")
   {
     std::vector<VariableName> displacements = getParam<std::vector<VariableName>>("displacements");
