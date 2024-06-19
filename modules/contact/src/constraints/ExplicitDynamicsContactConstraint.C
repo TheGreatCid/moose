@@ -322,7 +322,7 @@ ExplicitDynamicsContactConstraint::penaltyEnforcement(PenetrationInfo * pinfo)
       mooseError("Hit max it");
   }
   // Update contact force
-  pinfo->_contact_force = pinfo->_normal * force;
+  pinfo->_contact_force = pinfo->_normal * -force;
 }
 
 void

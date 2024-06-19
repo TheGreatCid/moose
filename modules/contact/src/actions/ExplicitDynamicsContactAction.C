@@ -74,6 +74,8 @@ ExplicitDynamicsContactAction::validParams()
                                 "Offset to gap distance from secondary side");
   params.addParam<VariableName>("mapped_primary_gap_offset",
                                 "Offset to gap distance mapped from primary side");
+  params.addParam<bool>("penalty_enforcement", false, "Use penalty enforcement");
+  params.addParam<Real>("penalty_stiffness", 1e6, "Penalty stiffness");
 
   return params;
 }
@@ -360,8 +362,8 @@ ExplicitDynamicsContactAction::addNodeFaceContact()
 
   params.set<std::vector<VariableName>>("displacements") = displacements;
   params.set<bool>("use_displaced_mesh") = true;
-  params.set<bool>("penalty_enforcement") = false;
-  params.set<Real>("penalty_stiffness") = 1e6;
+  params.set<bool>("penalty_enforcement") = getParam<bool>("penalty_enforcement");
+  params.set<Real>("penalty_stiffness") = getParam<Real>("penalty_stiffness");
 
   params.set<bool>("overwrite_current_solution") = getParam<bool>("overwrite_current_solution");
   params.set<Real>("penalty") = getParam<Real>("penalty");
