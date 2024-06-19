@@ -1364,6 +1364,12 @@ NonlinearSystemBase::constraintResiduals(NumericVector<Number> & residual, bool 
       const auto & constraints =
           _constraints.getActiveNodeFaceConstraints(secondary_boundary, displaced);
 
+      // Get acceleration with direct calculation if using direct time integrator
+      if (_time_integrator->isDirect())
+        _time_integrator->computeDirectTimeDerivatives(residual);
+      else
+        _time_integrator->computeTimeDerivatives();
+
       for (unsigned int i = 0; i < secondary_nodes.size(); i++)
       {
         dof_id_type secondary_node_num = secondary_nodes[i];
@@ -1386,15 +1392,7 @@ NonlinearSystemBase::constraintResiduals(NumericVector<Number> & residual, bool 
               if (nfc->secondaryBoundary() != secondary_boundary ||
                   nfc->primaryBoundary() != primary_boundary)
                 continue;
-              // Get accel with direct calculation if using direct accel calculation
-              if (_time_integrator->isDirect())
-              {
-                _time_integrator->computeDirectTimeDerivatives(residual);
-              }
-              else
-              {
-                _time_integrator->computeTimeDerivatives();
-              }
+
               if (nfc->shouldApply())
               {
                 constraints_applied = true;
