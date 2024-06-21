@@ -114,6 +114,11 @@ ComputeLagrangianStrainBase<G>::computeQpProperties()
   RankTwoTensor dL;
   if (_large_kinematics)
   {
+    if (_t_step == 1)
+    {
+      std::cout << "" << std::endl;
+      _F[_qp].print();
+    }
     _F_inv[_qp] = _F[_qp].inverse();
     _f_inv[_qp] = _F_old[_qp] * _F_inv[_qp];
     dL = RankTwoTensor::Identity() - _f_inv[_qp];
@@ -164,6 +169,7 @@ template <class G>
 void
 ComputeLagrangianStrainBase<G>::computeQpUnstabilizedDeformationGradient()
 {
+
   _F_ust[_qp].setToIdentity();
   for (auto component : make_range(_ndisp))
     G::addGradOp(_F_ust[_qp],
@@ -177,6 +183,8 @@ template <class G>
 void
 ComputeLagrangianStrainBase<G>::computeDeformationGradient()
 {
+  if (_t_step == 1)
+    std::cout << "debug" << std::endl;
   // First calculate the unstabilized deformation gradient at each qp
   for (_qp = 0; _qp < _qrule->n_points(); ++_qp)
   {

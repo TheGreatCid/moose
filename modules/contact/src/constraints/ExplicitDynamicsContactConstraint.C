@@ -302,7 +302,9 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
   dof_id_type dof_x = node.dof_number(_sys.number(), _var_objects[0]->number(), 0);
   dof_id_type dof_y = node.dof_number(_sys.number(), _var_objects[1]->number(), 0);
-  dof_id_type dof_z = node.dof_number(_sys.number(), _var_objects[2]->number(), 0);
+  dof_id_type dof_z = 0;
+  if (_mesh.dimension() == 3)
+    dof_z = node.dof_number(_sys.number(), _var_objects[2]->number(), 0);
 
   auto & u_dot = *_sys.solutionUDot();
   auto & u_old = _sys.solutionOld();
@@ -314,11 +316,15 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   // Initial guess: v_{n-1/2} + dt * M^{-1} * (F^{ext} - F^{int})
   Real velocity_x = u_dot(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
   Real velocity_y = u_dot(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
-  Real velocity_z = u_dot(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
+  Real velocity_z = 0;
+  if (_mesh.dimension() == 3)
+    velocity_z = u_dot(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
 
   Real n_velocity_x = _neighbor_vel_x[0];
   Real n_velocity_y = _neighbor_vel_y[0];
-  Real n_velocity_z = _neighbor_vel_z[0];
+  Real n_velocity_z = 0;
+  if (_mesh.dimension() == 3)
+    n_velocity_z = _neighbor_vel_z[0];
 
   RealVectorValue secondary_velocity(
       velocity_x, velocity_y, _mesh.dimension() == 3 ? velocity_z : 0.0);
@@ -377,11 +383,15 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
   u_old.set(dof_x, u_old_old(dof_x) + velocity_x * _dt);
   u_old.set(dof_y, u_old_old(dof_y) + velocity_y * _dt);
-  u_old.set(dof_z, u_old_old(dof_z) + velocity_z * _dt);
 
   _dof_to_position[dof_x] = u_old_old(dof_x) + velocity_x * _dt;
   _dof_to_position[dof_y] = u_old_old(dof_y) + velocity_y * _dt;
-  _dof_to_position[dof_z] = u_old_old(dof_z) + velocity_z * _dt;
+
+  if (_mesh.dimension() == 3)
+  {
+    u_old.set(dof_z, u_old_old(dof_z) + velocity_z * _dt);
+    _dof_to_position[dof_z] = u_old_old(dof_z) + velocity_z * _dt;
+  }
 
   pinfo->_contact_force = pinfo->_normal * lambda_iteration;
 }
@@ -458,17 +468,21 @@ ExplicitDynamicsContactConstraint::overwriteBoundaryVariables(NumericVector<Numb
   {
     dof_id_type dof_x = secondary_node.dof_number(_sys.number(), _var_objects[0]->number(), 0);
     dof_id_type dof_y = secondary_node.dof_number(_sys.number(), _var_objects[1]->number(), 0);
-    dof_id_type dof_z = secondary_node.dof_number(_sys.number(), _var_objects[2]->number(), 0);
+    dof_id_type dof_z = 0;
+    if (_mesh.dimension() == 3)
+      dof_z = secondary_node.dof_number(_sys.number(), _var_objects[2]->number(), 0);
 
     if (_dof_to_position.find(dof_x) != _dof_to_position.end())
     {
       const auto & position_x = libmesh_map_find(_dof_to_position, dof_x);
       const auto & position_y = libmesh_map_find(_dof_to_position, dof_y);
-      const auto & position_z = libmesh_map_find(_dof_to_position, dof_z);
-
+      if (_mesh.dimension() == 3)
+      {
+        auto & position_z = libmesh_map_find(_dof_to_position, dof_z);
+        soln.set(dof_z, position_z);
+      }
       soln.set(dof_x, position_x);
       soln.set(dof_y, position_y);
-      soln.set(dof_z, position_z);
     }
   }
 }

@@ -78,6 +78,15 @@ ComputeSimoHughesJ2PlasticityStress::computeQpPK1Stress()
   const auto Fit = _F[_qp].inverse().transpose();
   const auto detJ = _F[_qp].det();
 
+  if (_t_step == 1)
+  {
+    std::cout << "========================" << std::endl;
+    _F[_qp].print();
+    std::cout << "------------------------" << std::endl;
+    _inv_df[_qp].print();
+    std::cout << "========================" << std::endl;
+  }
+
   // Update configuration
   RankTwoTensor f = _inv_df[_qp].inverse();
   RankTwoTensor f_bar = f / std::cbrt(f.det());
