@@ -77,9 +77,28 @@ CentralDifference::computeTimeDerivatives()
     mooseError("CentralDifference: Time derivative of solution (`u_dotdot`) is not stored. Please "
                "set uDotDotRequested() to true in FEProblemBase before requesting `u_dot`.");
 
-  // Don't update time derivate if using reference configuration
+  // If using direct time integration
   if (_sys.name() == "nl0" && _is_direct)
   {
+    // Calculate acceleration
+    auto & accel = *_sys.solutionUDotDot();
+    accel.pointwise_mult(_mass_matrix_diag, _explicit_residual);
+
+    auto & vel = *_sys.solutionUDot();
+    vel.zero();
+
+    auto accel_scaled = accel.clone();
+
+    // Scaling the acceleration
+    accel_scaled->scale((_dt + _dt_old) / 2);
+
+    // Adding old vel to new vel
+    auto old_vel = _sys.solutionUDotOld();
+    vel += *old_vel;
+    vel += *accel_scaled;
+
+    vel.close();
+    accel.close();
     return;
   }
 
