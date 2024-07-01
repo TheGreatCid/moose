@@ -74,9 +74,8 @@ ExplicitDynamicsContactAction::validParams()
                                 "Offset to gap distance from secondary side");
   params.addParam<VariableName>("mapped_primary_gap_offset",
                                 "Offset to gap distance mapped from primary side");
-  params.addParam<bool>("penalty_enforcement", false, "Use penalty enforcement");
-  params.addParam<Real>("penalty_stiffness", 1e6, "Penalty stiffness");
-
+  params.addParam<bool>(
+      "is_direct", false, "Whether or not using a direct acceleration calculation");
   return params;
 }
 
@@ -367,6 +366,7 @@ ExplicitDynamicsContactAction::addNodeFaceContact()
 
   params.set<bool>("overwrite_current_solution") = getParam<bool>("overwrite_current_solution");
   params.set<Real>("penalty") = getParam<Real>("penalty");
+  params.set<bool>("is_direct") = getParam<bool>("is_direct");
 
   params.set<MooseEnum>("order") = Utility::enum_to_string<Order>(OrderWrapper{order});
 

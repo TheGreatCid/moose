@@ -1396,6 +1396,11 @@ NonlinearSystemBase::constraintResiduals(NumericVector<Number> & residual, bool 
 
     if (_constraints.hasActiveNodeFaceConstraints(secondary_boundary, displaced))
     {
+      // If using direct calculation of accel, calculate accelerations based on F^int and F^ext,
+      // before calculating nfcs.
+      if (_time_integrator->isDirect())
+        _time_integrator->computeTimeDerivatives();
+
       const auto & constraints =
           _constraints.getActiveNodeFaceConstraints(secondary_boundary, displaced);
 

@@ -143,11 +143,8 @@ protected:
   /// Whether to overwrite contact boundary nodal solution
   const bool _overwrite_current_solution;
 
-  const bool _direct;
-
-  const bool _penalty_enforcement;
-
-  const Real _penalty_stiffness;
+  // Whether or not using direct calculation of acceleration
+  bool _is_direct;
 
 private:
   std::unordered_map<dof_id_type, Real> _dof_to_position;

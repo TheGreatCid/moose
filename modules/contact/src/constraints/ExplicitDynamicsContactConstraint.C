@@ -69,13 +69,7 @@ ExplicitDynamicsContactConstraint::validParams()
                         "Whether to overwrite the position of contact boundaries with the velocity "
                         "computed with the contact algorithm.");
   params.addParam<bool>(
-      "direct",
-      false,
-      "Where or not you are using a direct calculation of the acceleration in the "
-      "time integrator");
-  params.addParam<bool>(
-      "penalty_enforcement", false, "Whether or not to use a penalty contact enforcement");
-  params.addParam<Real>("penalty_stiffness", 1e6, "The stiffness for the penalty method");
+      "is_direct", false, "Whether or not using a direct calculation of the acceleration");
   params.addClassDescription(
       "Apply non-penetration constraints on the mechanical deformation in explicit dynamics "
       "using a node on face formulation by solving uncoupled momentum-balance equations.");
@@ -115,9 +109,7 @@ ExplicitDynamicsContactConstraint::ExplicitDynamicsContactConstraint(
     _neighbor_vel_z((_mesh.dimension() == 3 && isCoupled("vel_z")) ? coupledNeighborValue("vel_z")
                                                                    : _zero),
     _overwrite_current_solution(getParam<bool>("overwrite_current_solution")),
-    _direct(getParam<bool>("direct")),
-    _penalty_enforcement(getParam<bool>("penalty_enforcement")),
-    _penalty_stiffness(getParam<Real>("penalty_stiffness"))
+    _is_direct(getParam<bool>("is_direct"))
 {
   _overwrite_secondary_residual = false;
 
@@ -361,16 +353,27 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   auto & u_dot = *_sys.solutionUDot();
   auto & u_old = _sys.solutionOld();
   auto & u_old_old = _sys.solutionOlder();
+  auto & u_dotdot = *_sys.solutionUDotDot();
   // Mass proxy for secondary node.
   const Real mass_proxy = density_secondary * wave_speed_secondary * _dt * nodal_area;
 
   // Include effects of other forces:
   // Initial guess: v_{n-1/2} + dt * M^{-1} * (F^{ext} - F^{int})
-  Real velocity_x = u_dot(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
-  Real velocity_y = u_dot(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
-  Real velocity_z = 0;
-  if (_mesh.dimension() == 3)
+  Real velocity_x;
+  Real velocity_y;
+  Real velocity_z;
+  if (_is_direct == true)
+  {
+    velocity_x = u_dot(dof_x) + (_dt + _dt_old) / 2 * u_dotdot(dof_x);
+    velocity_y = u_dot(dof_y) + (_dt + _dt_old) / 2 * u_dotdot(dof_y);
+    velocity_z = u_dot(dof_z) + (_dt + _dt_old) / 2 * u_dotdot(dof_z);
+  }
+  else
+  {
+    velocity_x = u_dot(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
+    velocity_y = u_dot(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
     velocity_z = u_dot(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
+  }
 
   Real n_velocity_x = _neighbor_vel_x[0];
   Real n_velocity_y = _neighbor_vel_y[0];
@@ -433,18 +436,16 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
   _gap_rate->setNodalValue(gap_rate);
 
-  u_old.set(dof_x, u_old_old(dof_x) + velocity_x * _dt);
-  u_old.set(dof_y, u_old_old(dof_y) + velocity_y * _dt);
-
-  _dof_to_position[dof_x] = u_old_old(dof_x) + velocity_x * _dt;
-  _dof_to_position[dof_y] = u_old_old(dof_y) + velocity_y * _dt;
-
-  if (_mesh.dimension() == 3)
+  if (!_is_direct)
   {
+    u_old.set(dof_x, u_old_old(dof_x) + velocity_x * _dt);
+    u_old.set(dof_y, u_old_old(dof_y) + velocity_y * _dt);
     u_old.set(dof_z, u_old_old(dof_z) + velocity_z * _dt);
+
+    _dof_to_position[dof_x] = u_old_old(dof_x) + velocity_x * _dt;
+    _dof_to_position[dof_y] = u_old_old(dof_y) + velocity_y * _dt;
     _dof_to_position[dof_z] = u_old_old(dof_z) + velocity_z * _dt;
   }
-
   pinfo->_contact_force = pinfo->_normal * lambda_iteration;
 }
 
