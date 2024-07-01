@@ -262,10 +262,7 @@ ExplicitDynamicsContactConstraint::computeContactForce(const Node & node,
       pinfo->_contact_force = pinfo->_normal * (pinfo->_normal * pen_force);
       break;
     case ExplicitDynamicsContactModel::FRICTIONLESS_BALANCE:
-      if (_penalty_enforcement)
-        penaltyEnforcement(pinfo);
-      else
-        solveImpactEquations(node, pinfo, distance_vec);
+      solveImpactEquations(node, pinfo, distance_vec);
       break;
     default:
       mooseError("Invalid or unavailable contact model");
@@ -281,40 +278,6 @@ ExplicitDynamicsContactConstraint::computeContactForce(const Node & node,
       pinfo->_contact_force.zero();
     }
   }
-}
-
-void
-ExplicitDynamicsContactConstraint::penaltyEnforcement(PenetrationInfo * pinfo)
-{
-  Real gap_threshold = 1e-6;  // Target gap length
-  Real max_iteration = 20000; // Max iterations
-  Real tolerance = 1e-8;      // Convergence tolerance
-  Real penalty_force = 0.0;   // Initialize forces
-  Real force = 0.0;
-  Real gap = pinfo->_distance; // Positive distance indicates penetration
-  double disp = 0.0;
-  // Penalty Method
-  for (unsigned int iteration = 0; iteration < max_iteration; ++iteration)
-  {
-    // Update gap distance
-    gap = pinfo->_distance - disp;
-    if (gap >= gap_threshold)
-    {
-      // Get penalty force
-      penalty_force = _penalty_stiffness * (gap - gap_threshold);
-      force += penalty_force;
-    }
-    // Update displacement
-    double new_disp = force / _penalty_stiffness;
-    // Check convergence
-    if (abs(new_disp - disp) < tolerance)
-      break;
-    disp = new_disp;
-    if (iteration + 1 == penalty_force)
-      mooseError("Hit max it");
-  }
-  // Update contact force
-  pinfo->_contact_force = pinfo->_normal * -force;
 }
 
 void

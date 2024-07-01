@@ -79,17 +79,6 @@ ActuallyExplicitEuler::solve()
   _fe_problem.time() = _fe_problem.timeOld();
   _nonlinear_implicit_system->update();
 
-  // Compute the mass matrix
-  auto & mass_matrix = _nonlinear_implicit_system->get_system_matrix();
-  if ((!_constant_mass || (_constant_mass && _t_step == 1)) &&
-      _solve_type == LUMPED_CENTRAL_DIFFERENCE)
-    _fe_problem.computeJacobianTag(
-        *_nonlinear_implicit_system->current_local_solution, mass_matrix, _Ke_time_tag);
-
-  if (_solve_type == LUMPED || _solve_type == LUMPED_CENTRAL_DIFFERENCE ||
-      _solve_type == LUMP_PRECONDITIONED)
-    mass_matrix.vector_mult(_mass_matrix_diag, *_ones);
-
   // Compute the residual
   _explicit_residual.zero();
   _fe_problem.computeResidual(
