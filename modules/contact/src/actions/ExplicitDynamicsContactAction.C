@@ -361,8 +361,6 @@ ExplicitDynamicsContactAction::addNodeFaceContact()
 
   params.set<std::vector<VariableName>>("displacements") = displacements;
   params.set<bool>("use_displaced_mesh") = true;
-  params.set<bool>("penalty_enforcement") = getParam<bool>("penalty_enforcement");
-  params.set<Real>("penalty_stiffness") = getParam<Real>("penalty_stiffness");
 
   params.set<bool>("overwrite_current_solution") = getParam<bool>("overwrite_current_solution");
   params.set<Real>("penalty") = getParam<Real>("penalty");
