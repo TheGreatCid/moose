@@ -74,10 +74,16 @@ ActuallyExplicitEuler::solve()
   _n_linear_iterations = 0;
 
   _current_time = _fe_problem.time();
-
   // Set time to the time at which to evaluate the residual
   _fe_problem.time() = _fe_problem.timeOld();
   _nonlinear_implicit_system->update();
+  // // Compute the mass matrix
+  auto & mass_matrix = _nonlinear_implicit_system->get_system_matrix();
+  if (_t_step > 1)
+  {
+    mass_matrix.vector_mult(_mass_matrix_diag, *_ones);
+    // _mass_matrix_diag.print();
+  }
 
   // Compute the residual
   _explicit_residual.zero();
@@ -87,8 +93,6 @@ ActuallyExplicitEuler::solve()
   // Move the residual to the RHS
   _explicit_residual *= -1.0;
 
-  // Compute the mass matrix
-  auto & mass_matrix = _nonlinear_implicit_system->get_system_matrix();
   // Compute the mass matrix
   if (!_constant_mass || (_constant_mass && _t_step == 1))
     _fe_problem.computeJacobianTag(

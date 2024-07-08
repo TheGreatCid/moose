@@ -3326,12 +3326,13 @@ FEProblemBase::projectSolution()
     ComputeBoundaryInitialConditionThread cbic(*this);
     Threads::parallel_reduce(bnd_nodes, cbic);
 
-    // close the solution vectors to make sure the solutions are in good state before copyOldSolutions()
+    // close the solution vectors to make sure the solutions are in good state before
+    // copyOldSolutions()
     for (auto & nl : _nl)
       nl->solution().close();
     _aux->solution().close();
-    
-    // calling copyOldSolutions() to send ICs for old and older states back to where they 
+
+    // calling copyOldSolutions() to send ICs for old and older states back to where they
     // should be before the start of the time-looping.
     // Functionality moved here from FEProblemBase::initialSetup().
     if (global_current_state > 0)

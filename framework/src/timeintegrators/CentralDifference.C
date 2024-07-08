@@ -66,29 +66,29 @@ CentralDifference::initialSetup()
   _nl.addVector(_u_dotdot_factor_tag, true, GHOSTED);
 }
 
-void
-CentralDifference::computeDirectTimeDerivatives(NumericVector<Number> & residual)
-{
-  auto & u_dotdot = *_sys.solutionUDotDot();
-  auto & u_dot = *_sys.solutionUDot();
+// void
+// CentralDifference::computeDirectTimeDerivatives(NumericVector<Number> & residual)
+// {
+//   // auto & u_dotdot = *_sys.solutionUDotDot();
+//   // auto & u_dot = *_sys.solutionUDot();
 
-  _mass_matrix_diag.reciprocal();
+//   // _mass_matrix_diag.reciprocal();
 
-  u_dotdot.pointwise_mult(_mass_matrix_diag, residual);
+//   // u_dotdot.pointwise_mult(_mass_matrix_diag, residual);
 
-  auto u_dotdot_scaled = u_dotdot.clone();
-  u_dotdot_scaled->scale(_dt);
+//   // auto u_dotdot_scaled = u_dotdot.clone();
+//   // u_dotdot_scaled->scale(_dt);
 
-  auto old_vel = _sys.solutionUDotOld();
-  u_dot += *old_vel;
-  u_dot += *u_dotdot_scaled;
+//   // auto old_vel = _sys.solutionUDotOld();
+//   // u_dot += *old_vel;
+//   // u_dot += *u_dotdot_scaled;
 
-  // Account for resid being on RHS
-  u_dotdot.scale(-1);
+//   // // Account for resid being on RHS
+//   // u_dotdot.scale(-1);
 
-  u_dotdot.close();
-  u_dot.close();
-}
+//   // u_dotdot.close();
+//   // u_dot.close();
+// }
 
 void
 CentralDifference::computeTimeDerivatives()
@@ -105,24 +105,32 @@ CentralDifference::computeTimeDerivatives()
   if (_sys.name() == "nl0" && _is_direct)
   {
     // Calculate acceleration
-    auto & accel = *_sys.solutionUDotDot();
-    accel.pointwise_mult(_mass_matrix_diag, _explicit_residual);
+    // auto & accel = *_sys.solutionUDotDot();
+    // accel.pointwise_mult(_mass_matrix_diag, _explicit_residual);
+    // // _mass_matrix_diag.print();
+    // _explicit_residual.print();
+    // auto & vel = *_sys.solutionUDot();
+    // vel.zero();
 
-    auto & vel = *_sys.solutionUDot();
-    vel.zero();
+    // auto accel_scaled = accel.clone();
 
-    auto accel_scaled = accel.clone();
+    // // Scaling the acceleration
+    // accel_scaled->scale((_dt + _dt_old) / 2);
 
-    // Scaling the acceleration
-    accel_scaled->scale((_dt + _dt_old) / 2);
+    // // Adding old vel to new vel
+    // auto old_vel = _sys.solutionUDotOld();
+    // if (_t_step == 1)
+    // {
+    //   auto sol_old = _sys.solutionOlder().clone();
+    //   // sol_old->print();
+    //   sol_old->scale(1 / _dt);
+    //   vel += *sol_old;
+    // }
+    // vel += *old_vel;
+    // vel += *accel_scaled;
 
-    // Adding old vel to new vel
-    auto old_vel = _sys.solutionUDotOld();
-    vel += *old_vel;
-    vel += *accel_scaled;
-
-    vel.close();
-    accel.close();
+    // vel.close();
+    // accel.close();
     return;
   }
 

@@ -14,6 +14,7 @@
 #include "FEProblem.h"
 #include "SystemBase.h"
 #include "NonlinearSystem.h"
+#include "libmesh/sparse_matrix.h"
 
 InputParameters
 TimeIntegrator::validParams()
@@ -44,7 +45,9 @@ TimeIntegrator::TimeIntegrator(const InputParameters & parameters)
     _is_lumped(false),
     _is_direct(false),
     _u_dot_factor_tag(_fe_problem.addVectorTag("u_dot_factor", Moose::VECTOR_TAG_SOLUTION)),
-    _u_dotdot_factor_tag(_fe_problem.addVectorTag("u_dotdot_factor", Moose::VECTOR_TAG_SOLUTION))
+    _u_dotdot_factor_tag(_fe_problem.addVectorTag("u_dotdot_factor", Moose::VECTOR_TAG_SOLUTION)),
+    _mass_matrix_diag(_nl.addVector("mass_matrix_diag", false, PARALLEL))
+// _mass_matrix(_nonlinear_implicit_system->get_system_matrix())
 {
   _fe_problem.setUDotRequested(true);
 }

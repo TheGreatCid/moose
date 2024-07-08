@@ -21,8 +21,7 @@ ExplicitTimeIntegrator::validParams()
 {
   InputParameters params = TimeIntegrator::validParams();
 
-  MooseEnum solve_type("consistent lumped lump_preconditioned lumped_central_difference",
-                       "consistent");
+  MooseEnum solve_type("consistent lumped lump_preconditioned", "consistent");
 
   params.addParam<MooseEnum>(
       "solve_type",
@@ -38,11 +37,9 @@ ExplicitTimeIntegrator::validParams()
 ExplicitTimeIntegrator::ExplicitTimeIntegrator(const InputParameters & parameters)
   : TimeIntegrator(parameters),
     MeshChangedInterface(parameters),
-
     _solve_type(getParam<MooseEnum>("solve_type")),
     _explicit_residual(_nl.addVector("explicit_residual", false, PARALLEL)),
-    _solution_update(_nl.addVector("solution_update", true, PARALLEL)),
-    _mass_matrix_diag(_nl.addVector("mass_matrix_diag", false, PARALLEL))
+    _solution_update(_nl.addVector("solution_update", true, PARALLEL))
 {
   _Ke_time_tag = _fe_problem.getMatrixTagID("TIME");
 
@@ -50,8 +47,7 @@ ExplicitTimeIntegrator::ExplicitTimeIntegrator(const InputParameters & parameter
   // so that it is valid to not supply solve_type in the Executioner block:
   _fe_problem.solverParams()._type = Moose::ST_LINEAR;
 
-  if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED ||
-      _solve_type == LUMPED_CENTRAL_DIFFERENCE)
+  if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED)
     _ones = &_nl.addVector("ones", false, PARALLEL);
 }
 
@@ -78,12 +74,8 @@ void
 ExplicitTimeIntegrator::meshChanged()
 {
   // Can only be done after the system is initialized
-  if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED ||
-      _solve_type == LUMPED_CENTRAL_DIFFERENCE)
+  if (_solve_type == LUMPED || _solve_type == LUMP_PRECONDITIONED)
     *_ones = 1.;
-  if (_solve_type == LUMPED_CENTRAL_DIFFERENCE)
-    _is_direct = true;
-
   if (_solve_type == CONSISTENT || _solve_type == LUMP_PRECONDITIONED)
     _linear_solver = LinearSolver<Number>::build(comm());
 
@@ -117,10 +109,14 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
       // Note: This is actually how PETSc does it
       // It's not "perfectly optimal" - but it will be fast (and universal)
       mass_matrix.vector_mult(_mass_matrix_diag, *_ones);
-
+      // _mass_matrix_diag.print();
       // "Invert" the diagonal mass matrix
-      _mass_matrix_diag.reciprocal();
 
+      // if (_t_step == 3)
+      //   _mass_matrix_diag.print();
+      // auto _mass_matrix_diag_clone = _mass_matrix_diag.clone();
+      // _mass_matrix_diag_clone->reciprocal();
+      _mass_matrix_diag.reciprocal();
       // Calculate acceleration directly if using direct method
       if (_is_direct)
       {
@@ -129,18 +125,29 @@ ExplicitTimeIntegrator::performExplicitSolve(SparseMatrix<Number> & mass_matrix)
         accel.pointwise_mult(_mass_matrix_diag, _explicit_residual);
 
         auto & vel = *_sys.solutionUDot();
+        //   vel.print();
         vel.zero();
 
         auto accel_scaled = accel.clone();
 
         // Scaling the acceleration
         accel_scaled->scale((_dt + _dt_old) / 2);
-
         // Adding old vel to new vel
         auto old_vel = _sys.solutionUDotOld();
+        if (_t_step == 1)
+        {
+          auto sol_old = _sys.solutionOlder().clone();
+          // sol_old->print();
+          sol_old->scale(1 / _dt);
+          vel += *sol_old;
+        }
+        // old_vel->print();
         vel += *old_vel;
+        // vel.print();
         vel += *accel_scaled;
-
+        if (_t_step == 3)
+          vel.print();
+        // vel.print();
         auto vel_scaled = vel.clone();
 
         // Scale velocity by dt

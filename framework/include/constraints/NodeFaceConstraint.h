@@ -69,7 +69,13 @@ public:
    *
    * Get's called once per secondary node.
    */
+
   virtual bool shouldApply() { return true; }
+  virtual bool shouldApplyDirect(SparseMatrix<Number> & mass)
+  {
+    mass.close();
+    return true;
+  }
 
   /**
    * Whether or not the secondary's residual should be overwritten.

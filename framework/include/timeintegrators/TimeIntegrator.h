@@ -15,6 +15,7 @@
 #include "Restartable.h"
 #include "libmesh/id_types.h"
 #include "libmesh/libmesh_common.h"
+#include "libmesh/sparse_matrix.h"
 
 class FEProblemBase;
 class SystemBase;
@@ -167,6 +168,10 @@ public:
     std::cout << "not using direct" << std::endl;
   }
 
+  NumericVector<Number> & getMassDiag() { return _mass_matrix_diag; }
+
+  // SparseMatrix<Number> & getLumpedMassMatrix() { return _mass_matrix; }
+
 protected:
   /**
    * Gets the number of nonlinear iterations in the most recent solve.
@@ -217,4 +222,8 @@ protected:
   const TagID _u_dot_factor_tag;
   /// The vector tag for the nodal multiplication factor for the residual calculation of the udotdot term
   const TagID _u_dotdot_factor_tag;
+
+  // SparseMatrix<Number> & _mass_matrix;
+  /// Diagonal of the lumped mass matrix (and its inversion)
+  NumericVector<double> & _mass_matrix_diag;
 };

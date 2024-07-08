@@ -216,6 +216,5 @@ PenetrationAux::computeValue()
       default:
         mooseError("Unknown penetration info quantity in auxiliary kernel.");
     } // switch
-
   return retVal;
 }
