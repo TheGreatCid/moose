@@ -159,6 +159,8 @@ public:
    */
   TagID uDotDotFactorTag() const { return _u_dotdot_factor_tag; }
 
+  NumericVector<Number> & getMassDiag() { return _mass_matrix_diag; }
+
 protected:
   /**
    * Gets the number of nonlinear iterations in the most recent solve.
@@ -209,4 +211,8 @@ protected:
   const TagID _u_dot_factor_tag;
   /// The vector tag for the nodal multiplication factor for the residual calculation of the udotdot term
   const TagID _u_dotdot_factor_tag;
+
+  // SparseMatrix<Number> & _mass_matrix;
+  /// Diagonal of the lumped mass matrix (and its inversion)
+  NumericVector<double> & _mass_matrix_diag;
 };

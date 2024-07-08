@@ -44,7 +44,9 @@ TimeIntegrator::TimeIntegrator(const InputParameters & parameters)
     _is_lumped(false),
     _is_direct(isParamValid("use_direct") ? getParam<bool>("use_direct") : false),
     _u_dot_factor_tag(_fe_problem.addVectorTag("u_dot_factor", Moose::VECTOR_TAG_SOLUTION)),
-    _u_dotdot_factor_tag(_fe_problem.addVectorTag("u_dotdot_factor", Moose::VECTOR_TAG_SOLUTION))
+    _u_dotdot_factor_tag(_fe_problem.addVectorTag("u_dotdot_factor", Moose::VECTOR_TAG_SOLUTION)),
+    _mass_matrix_diag(_nl.addVector("mass_matrix_diag", false, PARALLEL))
+
 {
   _fe_problem.setUDotRequested(true);
 }

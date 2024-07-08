@@ -40,8 +40,7 @@ ExplicitTimeIntegrator::ExplicitTimeIntegrator(const InputParameters & parameter
 
     _solve_type(getParam<MooseEnum>("solve_type")),
     _explicit_residual(_nl.addVector("explicit_residual", false, PARALLEL)),
-    _solution_update(_nl.addVector("solution_update", true, PARALLEL)),
-    _mass_matrix_diag(_nl.addVector("mass_matrix_diag", false, PARALLEL))
+    _solution_update(_nl.addVector("solution_update", true, PARALLEL))
 {
   _Ke_time_tag = _fe_problem.getMatrixTagID("TIME");
 

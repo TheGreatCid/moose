@@ -23,6 +23,7 @@
 #include "ContactLineSearchBase.h"
 #include "ExplicitDynamicsContactAction.h"
 
+#include "TimeIntegrator.h"
 #include "libmesh/string_to_enum.h"
 #include "libmesh/sparse_matrix.h"
 
@@ -281,6 +282,12 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   // Momentum balance, uncoupled normal pressure
   // See Heinstein et al, 2000, Contact-impact modeling in explicit transient dynamics.
 
+  // Get mass matrix diagonal
+  auto & timed = *_sys.getSharedTimeIntegrator();
+  auto diag = timed.getMassDiag().clone();
+
+  bool is_direct = timed.isDirect();
+
   const auto nodal_area = nodalArea(node);
 
   dof_id_type dof_wave_speed =
@@ -310,12 +317,24 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   // Mass proxy for secondary node.
   const Real mass_proxy = density_secondary * wave_speed_secondary * _dt * nodal_area;
 
+  auto mass_q = (*diag)(dof_x);
   // Include effects of other forces:
   // Initial guess: v_{n-1/2} + dt * M^{-1} * (F^{ext} - F^{int})
-  Real velocity_x = u_dot(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
-  Real velocity_y = u_dot(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
-  Real velocity_z = u_dot(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
-
+  Real velocity_x = u_dot(dof_x);
+  Real velocity_y = u_dot(dof_y);
+  Real velocity_z = u_dot(dof_z);
+  if (is_direct)
+  {
+    velocity_x += _dt / mass_q * -1 * _residual_copy(dof_x);
+    velocity_y += _dt / mass_q * -1 * _residual_copy(dof_y);
+    velocity_z += _dt / mass_q * -1 * _residual_copy(dof_z);
+  }
+  else
+  {
+    velocity_x += _dt / mass_proxy * _residual_copy(dof_x);
+    velocity_y += _dt / mass_proxy * _residual_copy(dof_y);
+    velocity_z += _dt / mass_proxy * _residual_copy(dof_z);
+  }
   Real n_velocity_x = _neighbor_vel_x[0];
   Real n_velocity_y = _neighbor_vel_y[0];
   Real n_velocity_z = _neighbor_vel_z[0];
@@ -346,10 +365,18 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
     force_increment = mass_contact_pressure * gap_rate;
 
-    velocity_x -= _dt / mass_proxy * (pinfo->_normal(0) * (force_increment));
-    velocity_y -= _dt / mass_proxy * (pinfo->_normal(1) * (force_increment));
-    velocity_z -= _dt / mass_proxy * (pinfo->_normal(2) * (force_increment));
-
+    if (is_direct)
+    {
+      velocity_x -= _dt / mass_q * (pinfo->_normal(0) * (force_increment));
+      velocity_y -= _dt / mass_q * (pinfo->_normal(1) * (force_increment));
+      velocity_z -= _dt / mass_q * (pinfo->_normal(2) * (force_increment));
+    }
+    else
+    {
+      velocity_x -= _dt / mass_proxy * (pinfo->_normal(0) * (force_increment));
+      velocity_y -= _dt / mass_proxy * (pinfo->_normal(1) * (force_increment));
+      velocity_z -= _dt / mass_proxy * (pinfo->_normal(2) * (force_increment));
+    }
     // Let's not modify the neighbor velocity, but apply the corresponding force.
     // TODO: Update for multi-body impacts
     // n_velocity_x = n_velocity_x;
@@ -366,8 +393,7 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
     const Real relative_error = (force_increment - force_increment_old) / force_increment;
     const Real absolute_error = std::abs(force_increment);
 
-    if (std::abs(relative_error) < TOLERANCE * TOLERANCE || absolute_error < TOLERANCE ||
-        (gap_rate_old) * (gap_rate) < 0.0)
+    if (absolute_error < 1e-8)
       is_converged = true;
     else
       iteration_no++;
@@ -375,14 +401,16 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
   _gap_rate->setNodalValue(gap_rate);
 
-  u_old.set(dof_x, u_old_old(dof_x) + velocity_x * _dt);
-  u_old.set(dof_y, u_old_old(dof_y) + velocity_y * _dt);
-  u_old.set(dof_z, u_old_old(dof_z) + velocity_z * _dt);
+  if (!is_direct)
+  {
+    u_old.set(dof_x, u_old_old(dof_x) + velocity_x * _dt);
+    u_old.set(dof_y, u_old_old(dof_y) + velocity_y * _dt);
+    u_old.set(dof_z, u_old_old(dof_z) + velocity_z * _dt);
 
-  _dof_to_position[dof_x] = u_old_old(dof_x) + velocity_x * _dt;
-  _dof_to_position[dof_y] = u_old_old(dof_y) + velocity_y * _dt;
-  _dof_to_position[dof_z] = u_old_old(dof_z) + velocity_z * _dt;
-
+    _dof_to_position[dof_x] = u_old_old(dof_x) + velocity_x * _dt;
+    _dof_to_position[dof_y] = u_old_old(dof_y) + velocity_y * _dt;
+    _dof_to_position[dof_z] = u_old_old(dof_z) + velocity_z * _dt;
+  }
   pinfo->_contact_force = pinfo->_normal * lambda_iteration;
 }
 

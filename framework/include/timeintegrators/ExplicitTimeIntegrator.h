@@ -71,9 +71,6 @@ protected:
   /// Solution vector for the linear solve
   NumericVector<Real> & _solution_update;
 
-  /// Diagonal of the lumped mass matrix (and its inversion)
-  NumericVector<Real> & _mass_matrix_diag;
-
   /// Vector of 1's to help with creating the lumped mass matrix
   NumericVector<Real> * _ones;
 
