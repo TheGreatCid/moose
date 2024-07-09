@@ -1220,7 +1220,6 @@ NonlinearSystemBase::reinitNodeFace(const Node & secondary_node,
 void
 NonlinearSystemBase::setConstraintSecondaryValues(NumericVector<Number> & solution, bool displaced)
 {
-
   if (displaced)
     mooseAssert(_fe_problem.getDisplacedProblem(),
                 "If we're calling this method with displaced = true, then we better well have a "
@@ -1396,6 +1395,8 @@ NonlinearSystemBase::constraintResiduals(NumericVector<Number> & residual, bool 
 
     if (_constraints.hasActiveNodeFaceConstraints(secondary_boundary, displaced))
     {
+      if (_time_integrator->isDirect())
+        _time_integrator->computeTimeDerivatives();
       const auto & constraints =
           _constraints.getActiveNodeFaceConstraints(secondary_boundary, displaced);
 

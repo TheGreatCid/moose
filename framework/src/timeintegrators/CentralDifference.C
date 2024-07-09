@@ -78,7 +78,35 @@ CentralDifference::computeTimeDerivatives()
 
   // Don't update time derivate if using reference configuration
   if (_sys.name() == "nl0" && _is_direct)
+  {
+    auto resid = _sys.residualGhosted().clone();
+    // resid->print();
+    resid->scale(-1);
+    // Declaring u_dot and u_dotdot
+    auto & u_dot = *_sys.solutionUDot();
+    auto & u_dot_old = *_sys.solutionUDotOld();
+    auto & u_dotdot = *_sys.solutionUDotDot();
+
+    auto _mass_matrix_diag_clone = _mass_matrix_diag.clone();
+    _mass_matrix_diag_clone->reciprocal();
+
+    // _mass_matrix_diag_clone->print();
+
+    // Get accel
+    u_dotdot.pointwise_mult(*_mass_matrix_diag_clone, *resid);
+    auto u_dotdotscale = u_dotdot.clone();
+    u_dotdotscale->scale((_dt + _dt_old) / 2);
+
+    u_dot = u_dot_old;
+
+    u_dot += *u_dotdotscale;
+    // u_dot.print();
+    auto u_dotscale = u_dot.clone();
+
+    u_dotdot.close();
+    u_dot.close();
     return;
+  }
 
   // Declaring u_dot and u_dotdot
   auto & u_dot = *_sys.solutionUDot();

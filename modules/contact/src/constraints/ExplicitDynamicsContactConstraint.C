@@ -226,6 +226,23 @@ ExplicitDynamicsContactConstraint::computeContactForce(const Node & node,
                                                        bool update_contact_set)
 {
   RealVectorValue distance_vec(node - pinfo->_closest_point);
+
+  auto & timed = *_sys.getSharedTimeIntegrator();
+  // If using a direct calculation of acceleration we must add in the velocities coming from the
+  // current F^ext-F^int These are calculated by _time_integrator->computeTimeDerivatives before
+  // entering nfc->shouldapply in NonlinearSystemBase::ComputeConstraintResidual
+  if (timed.isDirect())
+  {
+    dof_id_type dof_x = node.dof_number(_sys.number(), _var_objects[0]->number(), 0);
+    dof_id_type dof_y = node.dof_number(_sys.number(), _var_objects[1]->number(), 0);
+    dof_id_type dof_z =
+        _mesh.dimension() == 3 ? node.dof_number(_sys.number(), _var_objects[2]->number(), 0) : 0;
+
+    RealVectorValue udotvec = {(*_sys.solutionUDot())(dof_x)*_dt,
+                               (*_sys.solutionUDot())(dof_y)*_dt,
+                               (*_sys.solutionUDot())(dof_z)*_dt};
+    distance_vec += udotvec;
+  }
   if (distance_vec.norm() != 0)
     distance_vec += gapOffset(node) * pinfo->_normal * distance_vec.unit() * distance_vec.unit();
 
@@ -237,7 +254,7 @@ ExplicitDynamicsContactConstraint::computeContactForce(const Node & node,
 
   // Capture nodes that are newly in contact
   if (update_contact_set && !pinfo->isCaptured() &&
-      MooseUtils::absoluteFuzzyGreaterEqual(gap_size, 0.0, 0.0))
+      MooseUtils::absoluteFuzzyGreaterEqual(gap_size, 0.0, 0))
   {
     newly_captured = true;
     pinfo->capture();
@@ -262,12 +279,20 @@ ExplicitDynamicsContactConstraint::computeContactForce(const Node & node,
       mooseError("Invalid or unavailable contact model");
       break;
   }
-
+  if (_t_step == 1076)
+  {
+    std::cout << "debug" << std::endl;
+    std::cout << pinfo->isCaptured() << std::endl;
+    std::cout << newly_captured << std::endl;
+  }
   if (update_contact_set && pinfo->isCaptured() && !newly_captured)
   {
     const Real contact_pressure = -(pinfo->_normal * pinfo->_contact_force) / nodalArea(node);
+    if (_t_step == 1076)
+      std::cout << contact_pressure << std::endl;
     if (-contact_pressure >= 0.0)
     {
+      std::cout << _t_step << std::endl;
       pinfo->release();
       pinfo->_contact_force.zero();
     }
@@ -284,7 +309,6 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
   // Get mass matrix diagonal
   auto & timed = *_sys.getSharedTimeIntegrator();
-  auto diag = timed.getMassDiag().clone();
 
   bool is_direct = timed.isDirect();
 
@@ -317,7 +341,7 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   // Mass proxy for secondary node.
   const Real mass_proxy = density_secondary * wave_speed_secondary * _dt * nodal_area;
 
-  auto mass_q = (*diag)(dof_x);
+  auto mass_q = (timed.getMassDiag())(dof_x);
   // Include effects of other forces:
   // Initial guess: v_{n-1/2} + dt * M^{-1} * (F^{ext} - F^{int})
   Real velocity_x = u_dot(dof_x);
@@ -351,17 +375,13 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
   const unsigned int max_no_iterations(20000);
 
   // Initialize augmented iteration variable
-  Real gap_rate_old(0.0);
   Real force_increment(0.0);
-  Real force_increment_old(0.0);
   Real lambda_iteration(0);
 
   while (!is_converged && iteration_no < max_no_iterations)
   {
     // Start a loop until we converge on normal contact forces
-    gap_rate_old = gap_rate;
     gap_rate = pinfo->_normal * (secondary_velocity - closest_point_velocity);
-    force_increment_old = force_increment;
 
     force_increment = mass_contact_pressure * gap_rate;
 
@@ -390,10 +410,9 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
     // Convergence check
     lambda_iteration += force_increment;
 
-    const Real relative_error = (force_increment - force_increment_old) / force_increment;
     const Real absolute_error = std::abs(force_increment);
 
-    if (absolute_error < 1e-8)
+    if (absolute_error < TOLERANCE)
       is_converged = true;
     else
       iteration_no++;

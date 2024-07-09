@@ -150,6 +150,7 @@ SolverSystem::compute(const ExecFlagType type)
   {
     // avoid division by dt which might be zero.
     _time_integrator->preStep();
-    _time_integrator->computeTimeDerivatives();
+    if (!_time_integrator->isDirect())
+      _time_integrator->computeTimeDerivatives();
   }
 }
