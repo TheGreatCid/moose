@@ -2349,7 +2349,7 @@ public:
   virtual void setCurrentBoundaryID(BoundaryID bid, const THREAD_ID tid) override;
 
   // Used for setting previous states
-  int global_current_state;
+  int _global_current_state;
 
 protected:
   /// Create extra tagged vectors and matrices

@@ -32,7 +32,8 @@ InitialConditionBase::validParams()
                         "this IC");
   params.addParamNamesToGroup("ignore_uo_dependency", "Advanced");
 
-  params.addParam<int>("state", 0, "Specify which state being set.");
+  MooseEnum stateEnum("CURRENT=0 OLD=1 OLDER=2", "CURRENT");
+  params.addParam<MooseEnum>("state", stateEnum, "Specify state that is being set.");
 
   params.addParamNamesToGroup("state", "Advanced");
 
@@ -57,7 +58,7 @@ InitialConditionBase::InitialConditionBase(const InputParameters & parameters)
     DependencyResolverInterface(),
     Restartable(this, "InitialConditionBases"),
     ElementIDInterface(this),
-    _my_state(getParam<int>("state")),
+    _my_state(getParam<MooseEnum>("state")),
     _sys(*getCheckedPointerParam<SystemBase *>("_sys")),
     _ignore_uo_dependency(getParam<bool>("ignore_uo_dependency"))
 {

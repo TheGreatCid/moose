@@ -45,8 +45,7 @@ InitialConditionWarehouse::addObject(std::shared_ptr<InitialConditionBase> objec
       mooseError("You are trying to set a boundary restricted variable on non-nodal variable. That "
                  "is not allowed.");
 
-    std::map<std::tuple<std::string, int>, std::set<BoundaryID>>::const_iterator iter =
-        _boundary_ics[tid].find(ic_key);
+    auto iter = _boundary_ics[tid].find(ic_key);
     if (iter != _boundary_ics[tid].end() && object->hasBoundary(iter->second))
       mooseError("The initial condition '",
                  object->name(),
@@ -59,8 +58,7 @@ InitialConditionWarehouse::addObject(std::shared_ptr<InitialConditionBase> objec
   // Block Restricted
   else if (object->blockRestricted())
   {
-    std::map<std::tuple<std::string, int>, std::set<SubdomainID>>::const_iterator iter =
-        _block_ics[tid].find(ic_key);
+    auto iter = _block_ics[tid].find(ic_key);
     if (iter != _block_ics[tid].end() &&
         (object->hasBlocks(iter->second) ||
          (iter->second.find(Moose::ANY_BLOCK_ID) != iter->second.end())))
@@ -75,8 +73,7 @@ InitialConditionWarehouse::addObject(std::shared_ptr<InitialConditionBase> objec
   // Non-restricted
   else
   {
-    std::map<std::tuple<std::string, int>, std::set<SubdomainID>>::const_iterator iter =
-        _block_ics[tid].find(ic_key);
+    auto iter = _block_ics[tid].find(ic_key);
     if (iter != _block_ics[tid].end())
       mooseError("The initial condition '",
                  object->name(),
