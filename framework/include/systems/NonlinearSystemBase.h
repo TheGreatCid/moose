@@ -628,6 +628,14 @@ public:
   const MooseObjectTagWarehouse<NodalBCBase> & getNodalBCWarehouse() const { return _nodal_bcs; }
 
   /**
+   * Return the PresetBC warehouse
+   */
+  const MooseObjectWarehouse<DirichletBCBase> & getPresetBCWarehouse() const
+  {
+    return _preset_nodal_bcs;
+  }
+
+  /**
    * Return the IntegratedBCBase warehouse
    */
   const MooseObjectTagWarehouse<IntegratedBCBase> & getIntegratedBCWarehouse() const
