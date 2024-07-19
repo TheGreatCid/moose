@@ -32,8 +32,8 @@ public:
 
   virtual bool performExplicitSolve(SparseMatrix<Number> & mass_matrix) override;
 
-  // Applying pre-set nodal BCs
-  void setPresetBCs();
+  // // Applying pre-set nodal BCs
+  // void setPresetBCs();
 
   void computeADTimeDerivatives(ADReal & ad_u_dot,
                                 const dof_id_type & dof,
