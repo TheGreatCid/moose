@@ -43,9 +43,6 @@ public:
   }
 
 protected:
-  /**
-   * Helper function that actually does the math for computing the time derivative
-   */
 
   const bool & _constant_mass;
 
