@@ -107,7 +107,6 @@
 
     [TimeIntegrator]
         type = CentralDifferenceDirect
-        solve_type = lumped
         mass_matrix_tag = 'mass'
     []
 

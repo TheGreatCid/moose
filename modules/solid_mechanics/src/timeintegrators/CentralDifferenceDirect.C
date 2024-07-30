@@ -37,6 +37,9 @@ CentralDifferenceDirect::validParams()
                         "and keep using it throughout the simulation.");
   params.addParam<TagName>("mass_matrix_tag", "mass", "The tag for the mass matrix");
 
+  MooseEnum solve_type("consistent lumped lump_preconditioned", "lumped");
+  params.setParameters("solve_type", solve_type);
+  params.ignoreParameter<MooseEnum>("solve_type");
   return params;
 }
 
