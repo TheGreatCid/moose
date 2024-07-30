@@ -34,48 +34,6 @@
     []
 []
 
-[AuxVariables]
-    [vel_x]
-    []
-    [accel_x]
-    []
-    [vel_y]
-    []
-    [accel_y]
-    []
-    [vel_z]
-    []
-[]
-
-[AuxKernels]
-    [accel_x] #All of these copy the accel and vel from the time integrator into an aux variable
-        type = TestNewmarkTI
-        variable = accel_x
-        displacement = disp_x
-        first = false
-        execute_on = 'LINEAR TIMESTEP_BEGIN TIMESTEP_END'
-    []
-    [vel_x]
-        type = TestNewmarkTI
-        variable = vel_x
-        displacement = disp_x
-        execute_on = 'LINEAR TIMESTEP_BEGIN TIMESTEP_END'
-    []
-    [accel_y]
-        type = TestNewmarkTI
-        variable = accel_y
-        displacement = disp_y
-        first = false
-        execute_on = 'LINEAR TIMESTEP_BEGIN TIMESTEP_END'
-    []
-    [vel_y]
-        type = TestNewmarkTI
-        variable = vel_y
-        displacement = disp_y
-        execute_on = 'LINEAR TIMESTEP_BEGIN TIMESTEP_END'
-    []
-[]
-
 [Functions]
     [forcing_fn]
         type = PiecewiseLinear
@@ -130,25 +88,17 @@
 []
 
 [BCs]
-    # [left]
-    #     type = FunctionDirichletBC
-    #     variable = disp_x
-    #     boundary = 'left'
-    #     function = forcing_fn
-    #     preset = false
-    # []
     [left]
-        type = DirectDirichletBC
+        type = DirectFunctionDirichletBC
         variable = disp_x
-        value = 0
         boundary = 'left'
+        function = forcing_fn
     []
     [right]
-        type = FunctionDirichletBC
+        type = DirectFunctionDirichletBC
         variable = disp_x
         boundary = 'right'
         function = forcing_fn
-        preset = false
     []
 []
 
@@ -167,9 +117,6 @@
 []
 
 [Postprocessors]
-    [critical_time_step]
-        type = CriticalTimeStep
-    []
     [udot]
         type = ElementAverageTimeDerivative
         variable = disp_x
@@ -185,7 +132,6 @@
 []
 
 [Outputs]
-    csv = true
     exodus = true
 []
   
