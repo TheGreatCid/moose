@@ -10,6 +10,7 @@
 #pragma once
 
 #include "ExplicitTimeIntegrator.h"
+#include "MooseError.h"
 #include "libmesh/sparse_matrix.h"
 
 class MassMatrixHelper;
@@ -32,17 +33,13 @@ public:
 
   virtual bool performExplicitSolve(SparseMatrix<Number> & mass_matrix) override;
 
-  // // Applying pre-set nodal BCs
-  // void setPresetBCs();
-
   void computeADTimeDerivatives(ADReal & ad_u_dot,
                                 const dof_id_type & dof,
                                 ADReal & ad_u_dotdot) const override
   {
     ad_u_dotdot.value();
     ad_u_dot.value();
-    std::cout << dof << std::endl;
-    return mooseError("NOT SUPPORTED");
+    return mooseError("On %d - NOT SUPPORTED", dof);
   }
 
 protected:

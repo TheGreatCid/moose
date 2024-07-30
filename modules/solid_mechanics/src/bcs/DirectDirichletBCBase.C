@@ -54,10 +54,11 @@ DirectDirichletBCBase::computeQpResidual()
 
   // Get lumped component of mass matrix
   Real masslump = 0;
-  for (int j = 0; j < _mass_matrix->n(); j++)
+  for (int j = 0; j < int(_mass_matrix->n()); j++)
     masslump += (*_mass_matrix)(dofnum, j);
 
   // Compute residual to enforce BC
+  // This is the force required to enforce the BC in a central difference scheme
   Real resid = (computeQpValue() - _u[_qp]) / (_dt * _dt) - (*_sys.solutionUDotOld())(dofnum) / _dt;
   resid *= -masslump;
 
