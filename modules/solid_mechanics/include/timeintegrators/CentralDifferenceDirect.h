@@ -43,7 +43,6 @@ public:
   }
 
 protected:
-
   const bool & _constant_mass;
 
   const TagName & _mass_matrix;
