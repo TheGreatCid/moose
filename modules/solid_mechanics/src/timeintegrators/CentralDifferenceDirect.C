@@ -148,9 +148,16 @@ CentralDifferenceDirect::performExplicitSolve(SparseMatrix<Number> & mass_matrix
 
   // Adding old vel to new vel
   auto & vel = *_sys.solutionUDot();
+  vel.zero();
   const auto & old_vel = _sys.solutionUDotOld();
-
-  vel = *old_vel->clone();
+  if (_t_step == 1)
+  {
+    auto sol_old = _sys.solutionOlder().clone();
+    // sol_old->print();
+    sol_old->scale(1 / _dt);
+    vel += *sol_old;
+  }
+  vel += *old_vel;
   vel += *accel_scaled;
 
   _solution_update = vel;
