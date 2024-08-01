@@ -140,6 +140,9 @@ protected:
   /// Whether to overwrite contact boundary nodal solution
   const bool _overwrite_current_solution;
 
+  /// Diagonal of the lumped mass matrix (and its inversion)
+  NumericVector<Real> & _mass_matrix_diag;
+
 private:
   std::unordered_map<dof_id_type, Real> _dof_to_position;
 };

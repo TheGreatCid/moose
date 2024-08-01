@@ -35,6 +35,10 @@ public:
   virtual void meshChanged() override;
   virtual bool isExplicit() const override { return true; }
 
+  NumericVector<Real> & getDiagMass() { return _mass_matrix_diag; }
+
+  virtual Real cloneMassDiagonal(int index) override { return _mass_matrix_diag(index); }
+
 protected:
   enum SolveType
   {

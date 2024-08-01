@@ -84,6 +84,7 @@ CentralDifferenceDirect::solve()
   if (!_constant_mass || (_constant_mass && _t_step == 1))
     _fe_problem.computeJacobianTag(
         *_nonlinear_implicit_system->current_local_solution, mass_matrix, mass_tag);
+  mass_matrix.vector_mult(_mass_matrix_diag, *_ones);
 
   // Set time to the time at which to evaluate the residual
   _fe_problem.time() = _fe_problem.timeOld();

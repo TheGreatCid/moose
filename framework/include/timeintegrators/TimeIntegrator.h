@@ -10,6 +10,7 @@
 #pragma once
 
 // MOOSE includes
+#include "MooseError.h"
 #include "MooseObject.h"
 #include "Restartable.h"
 
@@ -152,6 +153,12 @@ public:
    * By default, this tag will be associated with udotdot.
    */
   TagID uDotDotFactorTag() const { return _u_dotdot_factor_tag; }
+
+  virtual Real cloneMassDiagonal(int index)
+  {
+    mooseError("Should not get here! %d", index);
+    return 0;
+  }
 
 protected:
   /**

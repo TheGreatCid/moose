@@ -23,6 +23,7 @@
 #include "ContactLineSearchBase.h"
 #include "ExplicitDynamicsContactAction.h"
 
+#include "TimeIntegrator.h"
 #include "libmesh/string_to_enum.h"
 #include "libmesh/sparse_matrix.h"
 
@@ -104,7 +105,8 @@ ExplicitDynamicsContactConstraint::ExplicitDynamicsContactConstraint(
     _neighbor_vel_y(isCoupled("vel_y") ? coupledNeighborValue("vel_y") : _zero),
     _neighbor_vel_z((_mesh.dimension() == 3 && isCoupled("vel_z")) ? coupledNeighborValue("vel_z")
                                                                    : _zero),
-    _overwrite_current_solution(getParam<bool>("overwrite_current_solution"))
+    _overwrite_current_solution(getParam<bool>("overwrite_current_solution")),
+    _mass_matrix_diag(_sys.addVector("mass_matrix_diag", false, PARALLEL))
 {
   _overwrite_secondary_residual = false;
 
@@ -144,6 +146,7 @@ ExplicitDynamicsContactConstraint::ExplicitDynamicsContactConstraint(
 void
 ExplicitDynamicsContactConstraint::timestepSetup()
 {
+
   if (_component == 0)
   {
     updateContactStatefulData(/* beginning_of_step = */ true);
@@ -224,7 +227,20 @@ ExplicitDynamicsContactConstraint::computeContactForce(const Node & node,
                                                        PenetrationInfo * pinfo,
                                                        bool update_contact_set)
 {
+
   RealVectorValue distance_vec(node - pinfo->_closest_point);
+
+  // Direct ==========================
+  dof_id_type dof_x = node.dof_number(_sys.number(), _var_objects[0]->number(), 0);
+  dof_id_type dof_y = node.dof_number(_sys.number(), _var_objects[1]->number(), 0);
+  dof_id_type dof_z =
+      _mesh.dimension() == 3 ? node.dof_number(_sys.number(), _var_objects[2]->number(), 0) : 0;
+
+  RealVectorValue udotvec = {(*_sys.solutionUDot())(dof_x)*_dt,
+                             (*_sys.solutionUDot())(dof_y)*_dt,
+                             (*_sys.solutionUDot())(dof_z)*_dt};
+  distance_vec += udotvec;
+  //==================================
   if (distance_vec.norm() != 0)
     distance_vec += gapOffset(node) * pinfo->_normal * distance_vec.unit() * distance_vec.unit();
 
@@ -302,19 +318,31 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
   dof_id_type dof_x = node.dof_number(_sys.number(), _var_objects[0]->number(), 0);
   dof_id_type dof_y = node.dof_number(_sys.number(), _var_objects[1]->number(), 0);
-  dof_id_type dof_z = node.dof_number(_sys.number(), _var_objects[2]->number(), 0);
+  dof_id_type dof_z =
+      _mesh_dimension == 3 ? node.dof_number(_sys.number(), _var_objects[2]->number(), 0) : 0;
 
   auto & u_dot = *_sys.solutionUDot();
-  auto & u_old = _sys.solutionOld();
-  auto & u_old_old = _sys.solutionOlder();
-  // Mass proxy for secondary node.
-  const Real mass_proxy = density_secondary * wave_speed_secondary * _dt * nodal_area;
 
+  // Mass proxy for secondary node.
+  // const Real mass_proxy = density_secondary * wave_speed_secondary * _dt * nodal_area;
+
+  // Direct=========================
+
+  // Get lumped value
+  Real mass_q = _sys.getSharedTimeIntegrator()->cloneMassDiagonal(dof_x);
+
+  Real velocity_x = u_dot(dof_x);
+  Real velocity_y = u_dot(dof_y);
+  Real velocity_z = u_dot(dof_z);
   // Include effects of other forces:
   // Initial guess: v_{n-1/2} + dt * M^{-1} * (F^{ext} - F^{int})
-  Real velocity_x = u_dot(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
-  Real velocity_y = u_dot(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
-  Real velocity_z = u_dot(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
+  velocity_x += _dt / mass_q * -1 * _residual_copy(dof_x);
+  velocity_y += _dt / mass_q * -1 * _residual_copy(dof_y);
+  velocity_z += _dt / mass_q * -1 * _residual_copy(dof_z);
+  //==============================
+  // Real velocity_x = u_dot(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
+  // Real velocity_y = u_dot(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
+  // Real velocity_z = u_dot(dof_z) + _dt / mass_proxy * _residual_copy(dof_z);
 
   Real n_velocity_x = _neighbor_vel_x[0];
   Real n_velocity_y = _neighbor_vel_y[0];
@@ -346,9 +374,15 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
     force_increment = mass_contact_pressure * gap_rate;
 
-    velocity_x -= _dt / mass_proxy * (pinfo->_normal(0) * (force_increment));
-    velocity_y -= _dt / mass_proxy * (pinfo->_normal(1) * (force_increment));
-    velocity_z -= _dt / mass_proxy * (pinfo->_normal(2) * (force_increment));
+    // Direct ==========================
+    velocity_x -= _dt / mass_q * (pinfo->_normal(0) * (force_increment));
+    velocity_y -= _dt / mass_q * (pinfo->_normal(1) * (force_increment));
+    velocity_z -= _dt / mass_q * (pinfo->_normal(2) * (force_increment));
+    // ================================
+
+    // velocity_x -= _dt / mass_proxy * (pinfo->_normal(0) * (force_increment));
+    // velocity_y -= _dt / mass_proxy * (pinfo->_normal(1) * (force_increment));
+    // velocity_z -= _dt / mass_proxy * (pinfo->_normal(2) * (force_increment));
 
     // Let's not modify the neighbor velocity, but apply the corresponding force.
     // TODO: Update for multi-body impacts
@@ -375,13 +409,13 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
   _gap_rate->setNodalValue(gap_rate);
 
-  u_old.set(dof_x, u_old_old(dof_x) + velocity_x * _dt);
-  u_old.set(dof_y, u_old_old(dof_y) + velocity_y * _dt);
-  u_old.set(dof_z, u_old_old(dof_z) + velocity_z * _dt);
+  // u_old.set(dof_x, u_old_old(dof_x) + velocity_x * _dt);
+  // u_old.set(dof_y, u_old_old(dof_y) + velocity_y * _dt);
+  // u_old.set(dof_z, u_old_old(dof_z) + velocity_z * _dt);
 
-  _dof_to_position[dof_x] = u_old_old(dof_x) + velocity_x * _dt;
-  _dof_to_position[dof_y] = u_old_old(dof_y) + velocity_y * _dt;
-  _dof_to_position[dof_z] = u_old_old(dof_z) + velocity_z * _dt;
+  // _dof_to_position[dof_x] = u_old_old(dof_x) + velocity_x * _dt;
+  // _dof_to_position[dof_y] = u_old_old(dof_y) + velocity_y * _dt;
+  // _dof_to_position[dof_z] = u_old_old(dof_z) + velocity_z * _dt;
 
   pinfo->_contact_force = pinfo->_normal * lambda_iteration;
 }
