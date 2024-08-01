@@ -333,12 +333,12 @@ ExplicitDynamicsContactConstraint::solveImpactEquations(const Node & node,
 
   Real velocity_x = u_dot(dof_x);
   Real velocity_y = u_dot(dof_y);
-  Real velocity_z = u_dot(dof_z);
+  Real velocity_z = _mesh_dimension == 3 ? u_dot(dof_z) : 0;
   // Include effects of other forces:
   // Initial guess: v_{n-1/2} + dt * M^{-1} * (F^{ext} - F^{int})
   velocity_x += _dt / mass_q * -1 * _residual_copy(dof_x);
   velocity_y += _dt / mass_q * -1 * _residual_copy(dof_y);
-  velocity_z += _dt / mass_q * -1 * _residual_copy(dof_z);
+  velocity_z += _mesh_dimension == 3 ? _dt / mass_q * -1 * _residual_copy(dof_z) : 0;
   //==============================
   // Real velocity_x = u_dot(dof_x) + _dt / mass_proxy * _residual_copy(dof_x);
   // Real velocity_y = u_dot(dof_y) + _dt / mass_proxy * _residual_copy(dof_y);
