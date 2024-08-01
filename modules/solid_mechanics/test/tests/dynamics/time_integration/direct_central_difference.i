@@ -23,7 +23,7 @@
     xmax = 1
     ymin = -1
     ymax = 1
-    nx = 1
+    nx = 2
     ny = 1
 []
 

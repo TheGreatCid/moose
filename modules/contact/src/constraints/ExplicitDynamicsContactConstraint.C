@@ -106,7 +106,7 @@ ExplicitDynamicsContactConstraint::ExplicitDynamicsContactConstraint(
     _neighbor_vel_z((_mesh.dimension() == 3 && isCoupled("vel_z")) ? coupledNeighborValue("vel_z")
                                                                    : _zero),
     _overwrite_current_solution(getParam<bool>("overwrite_current_solution")),
-    _mass_matrix_diag(_sys.addVector("mass_matrix_diag", false, PARALLEL))
+    _mass_matrix_diag(_sys.addVector("mass_matrix_diag_2", false, PARALLEL))
 {
   _overwrite_secondary_residual = false;
 
@@ -238,7 +238,7 @@ ExplicitDynamicsContactConstraint::computeContactForce(const Node & node,
 
   RealVectorValue udotvec = {(*_sys.solutionUDot())(dof_x)*_dt,
                              (*_sys.solutionUDot())(dof_y)*_dt,
-                             (*_sys.solutionUDot())(dof_z)*_dt};
+                             _mesh.dimension() == 3 ? (*_sys.solutionUDot())(dof_z)*_dt : 0};
   distance_vec += udotvec;
   //==================================
   if (distance_vec.norm() != 0)

@@ -106,6 +106,12 @@ CentralDifferenceDirect::solve()
   *_nonlinear_implicit_system->solution = _nl.solutionOld();
   *_nonlinear_implicit_system->solution += _solution_update;
 
+  // _nl.overwriteNodeFace(*_nonlinear_implicit_system->solution);
+
+  // // Enforce contraints on the solution
+  // DofMap & dof_map = _nonlinear_implicit_system->get_dof_map();
+  // dof_map.enforce_constraints_exactly(*_nonlinear_implicit_system,
+  // _nonlinear_implicit_system->solution.get());
   _nonlinear_implicit_system->update();
 
   _nl.setSolution(*_nonlinear_implicit_system->current_local_solution);
